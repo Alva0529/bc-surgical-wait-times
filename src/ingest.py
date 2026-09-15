@@ -41,16 +41,13 @@ def list_resources():
     return [r for r in resources if r.get("format", "").upper() in {"XLSX", "CSV"}]
 
 def safe_filename(resource):
-    """Derive a usable filename for a resource.
+    """Derive a local filename for a resource from its published name.
 
-    Some catalogue resources have a download URL whose last segment carries no
-    real filename — one of these is literally `___` — so the URL alone is not a
-    reliable source for the name. Fall back to the published resource name.
+    The download URL is deliberately not used. Its last segment is sometimes
+    not a real filename (one is literally `___`), and it changes whenever a
+    file is reissued. Naming every file from the resource name gives one rule
+    for all of them.
     """
-    from_url = resource["url"].rsplit("/", 1)[-1]
-    if Path(from_url).suffix.lower() in {".xlsx", ".csv"}:
-        return from_url
-
     slug = re.sub(r"[^A-Za-z0-9]+", "-", resource["name"]).strip("-").lower()
     extension = "." + resource.get("format", "xlsx").lower()
     return slug + extension
@@ -74,7 +71,8 @@ def download(resource):
         "resource_name": resource.get("name"),
         "format": resource.get("format"),
         "source_url": url,
-        "local_path": str(target.relative_to(RAW_DIR.parents[1])),
+        # Forward slashes, so the committed manifest also resolves on Linux CI.
+        "local_path": target.relative_to(RAW_DIR.parents[1]).as_posix(),
         "bytes": len(response.content),
         "sha256": checksum,
         "fetched_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
