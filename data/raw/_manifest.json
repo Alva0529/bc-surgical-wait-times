@@ -1,0 +1,32 @@
+[
+  {
+    "resource_id": "f294562c-a6fd-4d7f-8f99-c51c91891c67",
+    "resource_name": "2009_2026 Quarterly Surgical Wait Times",
+    "format": "xlsx",
+    "source_url": "https://catalogue.data.gov.bc.ca/dataset/7c1bf2a8-96bb-4ad5-888d-a90672eb306e/resource/f294562c-a6fd-4d7f-8f99-c51c91891c67/download/___",
+    "local_path": "data\\raw\\2009-2026-quarterly-surgical-wait-times.xlsx",
+    "bytes": 8737664,
+    "sha256": "077444690d6e8489eec2ba8d468fea72777eaf01c36cc51bbb78afcc44784a19",
+    "fetched_at_utc": "2026-09-15T02:46:02+00:00"
+  },
+  {
+    "resource_id": "6cd508eb-7e31-4c86-b070-dc698131fa9a",
+    "resource_name": "2009_2026 Annual Surgical Wait Times",
+    "format": "xlsx",
+    "source_url": "https://catalogue.data.gov.bc.ca/dataset/7c1bf2a8-96bb-4ad5-888d-a90672eb306e/resource/6cd508eb-7e31-4c86-b070-dc698131fa9a/download/2009_2026-annual-surgical_wait_times.xlsx",
+    "local_path": "data\\raw\\2009_2026-annual-surgical_wait_times.xlsx",
+    "bytes": 2658690,
+    "sha256": "2d9f99cbe4ddb59fd7366d9593133eba3debc9d06b8c586a57d7fbc68d98ffda",
+    "fetched_at_utc": "2026-09-15T02:46:02+00:00"
+  },
+  {
+    "resource_id": "0c430fa8-043c-48d8-8e61-ecdab63b9ef3",
+    "resource_name": "2026_2027 Quarterly Surgical Wait Times - Q1 Interim",
+    "format": "xlsx",
+    "source_url": "https://catalogue.data.gov.bc.ca/dataset/7c1bf2a8-96bb-4ad5-888d-a90672eb306e/resource/0c430fa8-043c-48d8-8e61-ecdab63b9ef3/download/2026_2027-quarterly-surgical_wait_times-q1-interim.xlsx",
+    "local_path": "data\\raw\\2026_2027-quarterly-surgical_wait_times-q1-interim.xlsx",
+    "bytes": 146715,
+    "sha256": "5d801d6aabe8a2709c2d9fa2a9cc5f8d60516b9d5b698e024f773017684d04ce",
+    "fetched_at_utc": "2026-09-15T02:46:03+00:00"
+  }
+]

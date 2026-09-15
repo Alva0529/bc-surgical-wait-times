@@ -1,0 +1,21 @@
+# Local data — never commit source files or working copies
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/raw/_manifest.json
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# MLflow
+mlruns/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
