@@ -8,9 +8,11 @@ A small end-to-end build on British Columbia's published surgical wait time
 data: ingestion, a layered transformation pipeline, a dimensional model, and a
 reconciliation analysis.
 
-The point of the project is the errors this data produces without raising an
-error. The query runs, the chart renders, the number looks plausible, and it is
-wrong. Five are documented so far, below.
+The point of the project is what goes wrong when this data is read with default
+behaviour. The query runs, the chart renders, the number looks plausible, and it
+is wrong. Where the published figures can be checked against each other they
+hold together, to six cases in four million (see 6 below). The errors are the
+reader's, not the publisher's. Six are documented so far.
 
 ## Data source
 
@@ -41,7 +43,7 @@ different things:
 project.** The source files are aggregate counts published for public release,
 already subject to the Ministry's disclosure control rules.
 
-## Five ways to be wrong without an error
+## Six ways to be wrong without an error
 
 The publisher does not claim this data is complete. The Ministry's page says so
 directly:
@@ -144,12 +146,44 @@ average of percentiles was never a wait time anybody had.
 
 The counts announce the problem. The percentiles never do.
 
+### 6. `All Other Procedures` looks like a total and is not
+
+`PROCEDURE_GROUP` holds 85 values: `All Procedures`, which is the total, and 84
+real categories. One of those categories is called `All Other Procedures` — the
+residual bucket, everything not in a named group. A filter written as
+`LIKE 'All %'`, which is how "drop the total rows" usually gets written, drops it
+along with the total.
+
+Province-wide in the annual file, fiscal 2009/10 to 2025/26:
+
+| | Completed surgeries |
+|---|---|
+| Published `All Procedures` total | 4,169,291 |
+| Short by, adding up the 84 categories | **6** |
+| Short by, once `All Other Procedures` is dropped as a "total" | **110,827** |
+
+Six cases in seventeen years. Each of those six sits in a year where exactly one
+procedure group was suppressed province-wide, and each gap is between 1 and 4 —
+the range `<5` stands for. The quarterly file behaves the same way: 22 cases
+across 64 quarters, from 11 suppressed groups, every gap inside the same bound.
+
+So the published detail reconciles to the published totals, once suppression is
+accounted for. The 110,827 are not in the data. They are what one plausible line
+of SQL costs.
+
 ---
 
-All five have the same shape. The default behaviour, whether that is trusting
-the metadata, connecting the points, summing the column or letting a blank drop
-out of an average, produces a wrong number and no error. This pipeline is built
-to handle each one explicitly and never leave it to a default.
+All six have the same shape. The default behaviour — trusting the metadata,
+connecting the points, summing the column, letting a blank drop out of an
+average, pattern-matching a label — produces a wrong number and no error. This
+pipeline is built to handle each one explicitly and never leave it to a default.
+
+None of this is a complaint about the data. Where the published figures can be
+checked against each other, they hold: the detail adds up to the published
+totals to within six cases in 4,169,291, and every gap that remains is one
+suppressed group of 1 to 4 cases. The Ministry publishes what it says it
+publishes, under a suppression rule it documents. What this project is about is
+how that data gets read.
 
 ## Roadmap
 

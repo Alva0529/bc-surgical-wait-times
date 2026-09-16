@@ -1,8 +1,8 @@
 # Data dictionary
 
-> **Step 2: in progress.** Layout, time coverage, measure definitions and
-> additivity, hierarchy totals, suppression encoding and the three-state
-> requirement for silver are recorded. Open questions remain.
+> **Step 2: in progress.** Layout, grain, time coverage, measure definitions and
+> additivity, hierarchy totals, the dimension inventory, suppression encoding and
+> the requirements for silver are recorded. Open questions remain.
 
 For each file, record:
 
@@ -108,9 +108,32 @@ returned by `package_show`). The dataset's "more info" link,
 - **Scope:** elective, scheduled inpatient and day surgery cases, all ages.
   Unscheduled surgical cases are not included (official description).
 - One worksheet, `Sheet1`. Header in row 1, with no title or note rows above it.
-- Long format. The apparent grain is one row per period × health authority ×
-  hospital × procedure group. That is read from the header and the first rows;
-  whether the combination is actually unique has not been tested.
+- Long format.
+
+### Grain (verified)
+
+One row per period × health authority × hospital × procedure group. The key
+differs between files, because the annual file has no `QUARTER` column:
+
+| File | Key |
+|---|---|
+| Quarterly, interim | `FISCAL_YEAR`, `QUARTER`, `HEALTH_AUTHORITY`, `HOSPITAL_NAME`, `PROCEDURE_GROUP` |
+| Annual | `FISCAL_YEAR`, `HEALTH_AUTHORITY`, `HOSPITAL_NAME`, `PROCEDURE_GROUP` |
+
+Tested on the profiled versions (`sql/profile/03_grain.sql`, section 1): in all
+three files the number of key combinations equals the number of data rows, and
+no key occurs twice.
+
+The test means what it says only because the dimension values are clean
+(section 4 of the same file): no dimension column contains a NULL, and no value
+differs from another only by case or by surrounding spaces. Had
+`Burnaby Hospital` and `Burnaby Hospital ` both existed, a uniqueness test would
+have passed while the data held two hospitals of the same name.
+
+**Requirement for silver (Step 3), MUST:** a pytest asserts grain uniqueness,
+one assertion per silver table, on the key above. The assertion belongs on the
+silver table rather than the raw file, because it also covers whatever silver
+does when the quarterly and interim files are combined (see Open question 2).
 
 ## Files
 
@@ -162,8 +185,28 @@ returned by `package_show`). The dataset's "more info" link,
 | `HOSPITAL_NAME` | `All Facilities` | Includes a total value. |
 | `PROCEDURE_GROUP` | `Cataract Surgery`, `All Procedures`, `All Other Procedures` | Includes a total value, and one value that looks like a total but is not. |
 
-Values other than totals for `HEALTH_AUTHORITY` and `HOSPITAL_NAME` have not been
-profiled yet. The first rows of every file are province-level totals.
+### Dimension inventory
+
+Counts and boundaries are recorded here; the lists themselves come back from
+`sql/profile/03_grain.sql`, sections 3a and 4c.
+
+- **`PROCEDURE_GROUP`: 85 distinct values.** `All Procedures` (the total) and 84
+  categories, one of which is `All Other Procedures`. All 85 appear in all three
+  files. The smallest is `Hernia Repair - Chest Wall`, with 24 rows in the
+  quarterly file, 17 in the annual and 3 in the interim.
+- **`HEALTH_AUTHORITY`: 6 health authorities** — Fraser, Interior, Northern,
+  Provincial Health Services Authority, Vancouver Coastal, Vancouver Island —
+  plus the total value `All Health Authorities`.
+- **`HOSPITAL_NAME`: 65 hospitals** in the quarterly and annual files, **59** in
+  the interim file, plus the total value `All Facilities`.
+
+**Requirement for silver (Step 3), MUST: the hospital dimension is the union of
+all three files.** The interim file is short 6 hospitals because it covers a
+single quarter, and those hospitals have no rows in it. That is not missing
+data. A hospital dimension built from one file alone would not carry the
+hospitals the other files need, and historical rows would fail to join.
+
+No dimension column contains a NULL in any file.
 
 ## Measure columns
 
@@ -213,12 +256,22 @@ difference.
 - Total rows carry their own percentiles. Percentiles "are provided at all
   levels within each file" (official description), because they cannot be
   derived from the detail rows.
-- **Trap: `All Other Procedures` is not a total.** It is a residual procedure
-  group. Province-wide in 2009/10 Q1 it has 1,552 cases waiting, against 69,587
-  for `All Procedures`. A filter like `LIKE 'All %'` would classify it as a total
-  and drop a real category, with no error. This is based on the name and the
-  magnitude, and has not been checked against the full list of `PROCEDURE_GROUP`
-  values yet.
+- **Trap: `All Other Procedures` is not a total. Proved by arithmetic**
+  (`sql/profile/03_grain.sql`, sections 3b and 3c). Province-wide rows,
+  `COMPLETED`:
+
+  | | Annual file, 2009/10–2025/26 | Quarterly file, 64 quarters |
+  |---|---|---|
+  | Published `All Procedures` total | 4,169,291 | 3,879,192 |
+  | Gap when the 84 categories are summed | 6 | 22 |
+  | Gap once `All Other Procedures` is dropped | 110,827 | 101,235 |
+  | Province-wide suppressed groups | 1 per gap, 6 in total | 11 |
+
+  Summed correctly, the detail reconciles to the published total apart from the
+  suppressed groups, and every gap falls inside the 1 to 4 band that `<5` stands
+  for: 6 cases from 6 suppressed groups in the annual file, 22 from 11 in the
+  quarterly file. Dropping `All Other Procedures` as though it were a total
+  removes 110,827 completed surgeries, and raises no error.
 - **Requirement for silver (Step 3):** total rows are identified by an explicit
   list of exact values, never by pattern matching. A pytest asserts that
   `All Other Procedures` rows are kept as detail rows and not classified as
@@ -267,7 +320,9 @@ three files.
     `<5`.
 - **Why the range matters for Step 5:** every suppressed count is between 1 and
   4, so the gap between a total row and the sum of its detail rows is bounded:
-  at least 1 and at most 4 per suppressed detail cell.
+  at least 1 and at most 4 per suppressed detail cell. Checked province-wide at
+  both grains, where every observed gap fell inside that band. See Hierarchy
+  totals.
 
 ## Requirement for silver: suppressed and not applicable are different states
 
