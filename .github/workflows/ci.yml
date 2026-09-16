@@ -36,5 +36,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # The output goes to the run summary as well as the log, so that how many
+      # assertions ran, and how many skipped, is visible without opening the
+      # job. A green tick says the suite passed; it does not say what it
+      # covered.
       - name: Run tests
-        run: python -m pytest
+        run: |
+          python -m pytest | tee pytest-output.txt
+          {
+            echo '```'
+            cat pytest-output.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

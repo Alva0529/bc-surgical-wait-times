@@ -1,6 +1,9 @@
 # BC Surgical Wait Times — lakehouse build and disclosure-control reconciliation
 
-> **Status: in progress.** Step 1 of 7 complete. See Roadmap below.
+[![tests](https://github.com/Alva0529/bc-surgical-wait-times/actions/workflows/ci.yml/badge.svg)](https://github.com/Alva0529/bc-surgical-wait-times/actions/workflows/ci.yml)
+
+> **Status: in progress.** Steps 1 and 2 complete, step 3 under way. See Roadmap
+> below.
 
 ## What this is
 
