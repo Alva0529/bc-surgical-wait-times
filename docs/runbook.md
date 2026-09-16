@@ -14,6 +14,24 @@ connection, and prints each result.
 The first run downloads DuckDB's excel extension (`INSTALL excel`). This needs
 network access, on CI as well.
 
+## Official sources
+
+The official text quoted in `README.md` and `docs/data-dictionary.md` was read
+on 2026-09-15. When a new release lands, re-read both sources and update the
+quotes if the wording has changed.
+
+- **Data rules:** the catalogue dataset description. Read it through the API
+  (`package_show` with `id=bc-surgical-wait-times`, field `notes`).
+- **Data lineage:** the Ministry of Health page,
+  https://www2.gov.bc.ca/gov/content/health/accessing-health-care/surgical-wait-times
+
+### Known broken link
+
+- The catalogue's "more info" link for this dataset,
+  `https://swt.hlth.gov.bc.ca/`, returned **HTTP 404** on 2026-09-15 (so did
+  `/about`). It is still listed in the catalogue metadata. Do not rely on it for
+  documentation. Use the Ministry page above instead.
+
 ## Ingest (`src/ingest.py`)
 
 ### Known risks
@@ -53,9 +71,24 @@ network access, on CI as well.
 
 - **Without an explicit `range`, reading stops at the first blank row.**
   `stop_at_empty` then defaults to true, and every row below the blank row is
-  dropped. This is taken from DuckDB's documentation and has not been reproduced
-  on these files yet. The annual file has 9,628 fully blank rows whose position
-  has not been checked. Always set `stop_at_empty = false`.
+  dropped. Always set `stop_at_empty = false`.
+
+  This comes from DuckDB's documentation and has still not been reproduced here.
+  The annual file's 9,628 blank rows all sit after its data
+  (`sql/profile/01_time_coverage.sql`, section 5), so a default read of it loses
+  nothing. That is a fact about this file today, not about the reader.
+
+### A note on reading results
+
+When those blank rows were first checked, the outcome table written beforehand
+listed three possible row counts and missed a fourth: "the default skips blank
+rows wherever they are" produces exactly the same count as "the blank rows are
+at the end". The observation, 58,454 rows read, fitted both. A second query,
+over the sheet rows that hold data, was needed to tell them apart.
+
+Writing an exhaustive table of possible outcomes before running a query is
+harder than explaining the result afterwards. This one was not exhaustive, and
+the first reading of it would have been wrong.
 
 - **`all_varchar = true` shows decimals with floating-point noise.** `73.4`
   reads as `73.400000000000006`. The literal text is not what Excel displays.

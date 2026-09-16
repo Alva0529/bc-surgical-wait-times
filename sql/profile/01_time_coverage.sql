@@ -6,6 +6,8 @@
 --   2. How many rows does each file have, and are any of them not data?
 --   3. Do the unnamed columns J-L in the quarterly file hold anything?
 --   4. Do WAITING and COMPLETED add up from four quarters to the fiscal year?
+--   5. Where do the annual file's blank rows sit?
+--   6. Is the annual WAITING the same count as Q4 WAITING?
 --
 -- Files are located through data/raw/_manifest.json by resource_id, never by
 -- filename (see CLAUDE.md). Every cell is read as text (all_varchar = true), so
@@ -199,3 +201,84 @@ SELECT
 FROM annual AS a
 FULL JOIN quarterly AS q USING (FISCAL_YEAR)
 ORDER BY FISCAL_YEAR;
+
+
+-- 5. Where the annual file's blank rows sit -----------------------------------
+-- Two reads are needed.
+--
+-- The first reads the annual file WITHOUT stop_at_empty = false, so read_xlsx
+-- uses its default. How many rows come back says whether a default read loses
+-- data, but on its own it cannot locate the blank rows: reading every data row
+-- and no blank row is what "stopped at the first blank row, and the blank rows
+-- come after the data" looks like, and equally what "skipped the blank rows
+-- wherever they are" looks like.
+--
+-- The second read settles it by reading the sheet rows that hold data, from the
+-- first one to the last. If none of them is blank, the blank rows can only come
+-- after them. The range is fixed to the profiled version of this file: one
+-- header row and 58,454 data rows. Check it again if the file changes.
+
+SELECT
+    count(*)                                    AS rows_read_with_default,
+    count(*) FILTER (WHERE FISCAL_YEAR IS NULL) AS blank_rows_read,
+    min(FISCAL_YEAR)                            AS first_fiscal_year,
+    max(FISCAL_YEAR)                            AS last_fiscal_year
+FROM read_xlsx(getvariable('annual_path'),
+    sheet = 'Sheet1', header = true, all_varchar = true);
+
+-- header = false, so the columns come back as A to H and no row is treated as
+-- a header.
+
+SELECT
+    count(*) AS rows_in_data_range,
+    count(*) FILTER (WHERE coalesce(A, B, C, D, E, F, G, H) IS NULL)
+             AS blank_rows_in_data_range
+FROM read_xlsx(getvariable('annual_path'),
+    sheet = 'Sheet1', header = false, all_varchar = true,
+    stop_at_empty = false, range = 'A2:H58455');
+
+
+-- 6. Annual WAITING vs Q4 WAITING ---------------------------------------------
+-- The official description says cases waiting are "captured at a point in
+-- time, i.e., either at the end of the quarter or fiscal year". If the annual
+-- figure is the count at fiscal year end (March 31), it equals the Q4 figure.
+--
+-- matching_quarters lists every quarter whose WAITING equals the annual
+-- figure. If Q4 does not match, it shows which quarter does, if any.
+--
+-- Province-level total rows only, matched on exact values, as in section 4.
+-- LEFT JOIN keeps fiscal years the quarterly file does not have.
+
+WITH annual AS (
+    SELECT
+        FISCAL_YEAR,
+        CAST(WAITING AS INTEGER) AS waiting
+    FROM annual_raw
+    WHERE HEALTH_AUTHORITY = 'All Health Authorities'
+      AND HOSPITAL_NAME    = 'All Facilities'
+      AND PROCEDURE_GROUP  = 'All Procedures'
+),
+
+quarterly AS (
+    SELECT
+        FISCAL_YEAR,
+        QUARTER,
+        CAST(WAITING AS INTEGER) AS waiting
+    FROM quarterly_raw
+    WHERE HEALTH_AUTHORITY = 'All Health Authorities'
+      AND HOSPITAL_NAME    = 'All Facilities'
+      AND PROCEDURE_GROUP  = 'All Procedures'
+)
+
+SELECT
+    a.FISCAL_YEAR,
+    a.waiting                                                   AS waiting_year,
+    max(q.waiting) FILTER (WHERE q.QUARTER = 'Q4')              AS waiting_q4,
+    max(q.waiting) FILTER (WHERE q.QUARTER = 'Q4') - a.waiting  AS q4_minus_year,
+    string_agg(q.QUARTER, ',' ORDER BY q.QUARTER)
+        FILTER (WHERE q.waiting = a.waiting)                    AS matching_quarters
+FROM annual AS a
+LEFT JOIN quarterly AS q
+    ON q.FISCAL_YEAR = a.FISCAL_YEAR
+GROUP BY a.FISCAL_YEAR, a.waiting
+ORDER BY a.FISCAL_YEAR;
