@@ -1,0 +1,17 @@
+[
+  {
+    "resource_id": "f294562c-a6fd-4d7f-8f99-c51c91891c67",
+    "resource_name": "Quarterly fixture",
+    "local_path": "data/raw/quarterly_fixture.xlsx"
+  },
+  {
+    "resource_id": "6cd508eb-7e31-4c86-b070-dc698131fa9a",
+    "resource_name": "Annual fixture",
+    "local_path": "data/raw/annual_fixture.xlsx"
+  },
+  {
+    "resource_id": "0c430fa8-043c-48d8-8e61-ecdab63b9ef3",
+    "resource_name": "Interim fixture",
+    "local_path": "data/raw/interim_fixture.xlsx"
+  }
+]
