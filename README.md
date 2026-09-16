@@ -199,6 +199,8 @@ how that data gets read.
   sum of published detail, by level and period
 - [ ] **6. Report** — Power BI dashboard on the gold views
 - [ ] **7. Forecast** — case backlog trend, experiments tracked in MLflow
+- [ ] **8. T-SQL port** — the same DDL and gold views written for SQL Server in
+  `sql/tsql/`, to show the model carries over to a server engine
 
 ## Running it
 
@@ -227,7 +229,8 @@ python src/run_sql.py sql/profile/01_time_coverage.sql
 The warehouse here is a single DuckDB file so that the whole project clones and
 runs on any machine with no server setup. The modelling and the analytical SQL —
 star schema, CTEs, window functions — are standard and carry over to a server
-engine unchanged; `sql/tsql/` holds the same DDL written for SQL Server.
+engine unchanged. A T-SQL port of the same DDL is planned, in `sql/tsql/`; see
+step 8 of the roadmap.
 
 ## Layout
 
