@@ -19,6 +19,17 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
 
+# Built from the published files, which are not committed, so it is absent on a
+# fresh clone and in CI.
+WAREHOUSE = REPO_ROOT / "data" / "warehouse.duckdb"
+
+REBUILD_COMMANDS = (
+    "python src/ingest.py\n"
+    "    python src/run_sql.py sql/silver/01_silver_annual.sql data/warehouse.duckdb\n"
+    "    python src/run_sql.py sql/silver/02_silver_quarterly.sql data/warehouse.duckdb\n"
+    "    python -m pytest -m realdata"
+)
+
 SILVER_SQL = [
     REPO_ROOT / "sql" / "silver" / "01_silver_annual.sql",
     REPO_ROOT / "sql" / "silver" / "02_silver_quarterly.sql",
@@ -69,3 +80,40 @@ def silver(tmp_path_factory):
     connection = duckdb.connect(str(database), read_only=True)
     yield connection
     connection.close()
+
+
+@pytest.fixture(scope="session")
+def warehouse():
+    """A read-only connection to the warehouse built from the published files.
+
+    Skips, loudly, when the warehouse is absent. The published files are not
+    committed, so this is the normal state of a fresh clone and of CI.
+    """
+    if not WAREHOUSE.exists():
+        # One line per skipped test. The commands to fix it are printed once, at
+        # the end of the run, by pytest_terminal_summary below.
+        pytest.skip(
+            f"no {WAREHOUSE.relative_to(REPO_ROOT).as_posix()}: nothing checked "
+            f"the published files, the run summary says how to build it"
+        )
+
+    connection = duckdb.connect(str(WAREHOUSE), read_only=True)
+    yield connection
+    connection.close()
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    """Say out loud that the current-data assertions did not run.
+
+    A skipped test is one letter in the output. These assertions are the only
+    thing watching the published data for changes, so a run without them needs
+    to say so in a line nobody scrolls past.
+    """
+    if WAREHOUSE.exists():
+        return
+
+    terminalreporter.write_sep("-", "current-data assertions did not run", yellow=True)
+    terminalreporter.write_line(
+        f"No {WAREHOUSE.relative_to(REPO_ROOT).as_posix()}, so nothing checked the "
+        f"published files. After an ingest, run:\n    {REBUILD_COMMANDS}"
+    )

@@ -32,6 +32,40 @@ quotes if the wording has changed.
   `/about`). It is still listed in the catalogue metadata. Do not rely on it for
   documentation. Use the Ministry page above instead.
 
+## Tests
+
+```bash
+python -m pytest
+```
+
+Two kinds of assertion, kept in separate files because a failure means something
+different in each:
+
+- **`tests/test_silver_structure.py`** builds silver from the committed fixtures
+  and asserts things that must hold whatever the data says. A failure means the
+  pipeline is wrong. Runs anywhere, including CI.
+- **`tests/test_current_data.py`** reads `data/warehouse.duckdb` and pins facts
+  about the published files as they stand: 95 unexplained rows, 65 hospitals,
+  the gap at 2025/26, and the rest. A failure means **the data changed, not the
+  code**. Each assertion's docstring names the profiling query to rerun.
+
+Without a warehouse the second kind skips, and the run says so in a block of its
+own rather than a single `s`.
+
+**After every ingest**, rebuild silver and run them:
+
+```bash
+python src/ingest.py
+python src/run_sql.py sql/silver/01_silver_annual.sql data/warehouse.duckdb
+python src/run_sql.py sql/silver/02_silver_quarterly.sql data/warehouse.duckdb
+python -m pytest -m realdata
+```
+
+When one of those assertions fails legitimately, the order is: rerun the
+profiling query, update `docs/data-dictionary.md`, then update the number in the
+test. The number in the test is a copy of the documentation, never the other way
+round.
+
 ## Ingest (`src/ingest.py`)
 
 ### Known risks
@@ -77,6 +111,21 @@ quotes if the wording has changed.
   The annual file's 9,628 blank rows all sit after its data
   (`sql/profile/01_time_coverage.sql`, section 5), so a default read of it loses
   nothing. That is a fact about this file today, not about the reader.
+
+### A green suite proves nothing on its own
+
+Tests that pass and tests that check nothing look identical in CI: both are
+green. After writing a set of assertions, break the logic each one covers,
+confirm that assertion fails and that the others do not, then restore.
+
+The structural assertions were checked that way. A lower bound of 0 instead of
+1, a percentile falling back to `suppressed` instead of `unexplained`, and
+totals matched with `LIKE 'All %'`: each broke exactly one assertion, which is
+also how you find out the assertions are not covering for one another.
+
+An assertion can pass because the rows it looks at are not there at all. Where
+that is possible, assert first that the rows exist — the percentile
+classification test does this, and says so in its failure message.
 
 ### A rule that cries wolf is not a rule
 

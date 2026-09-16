@@ -231,6 +231,17 @@ Profiling queries run the same way, from the repository root:
 python src/run_sql.py sql/profile/01_time_coverage.sql
 ```
 
+The tests need no data: they build the silver layer from small committed
+fixtures, so a fresh clone can run them.
+
+```bash
+python -m pytest
+```
+
+Assertions that pin facts about the published files, rather than the pipeline,
+are marked `realdata` and skip without a warehouse. See
+[`docs/runbook.md`](docs/runbook.md).
+
 ### Why DuckDB
 
 The warehouse here is a single DuckDB file so that the whole project clones and
