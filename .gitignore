@@ -5,6 +5,9 @@ data/processed/*
 !data/processed/.gitkeep
 !data/raw/_manifest.json
 
+# Local working notes, not part of the repository
+CLAUDE.md
+
 # Python
 .venv/
 __pycache__/

@@ -230,3 +230,15 @@ star schema, CTEs, window functions — are standard and carry over to a server
 engine unchanged; `sql/tsql/` holds the same DDL written for SQL Server.
 
 ## Layout
+
+```
+data/raw/            source files, not committed
+data/raw/_manifest.json   source URL, sha256 and fetch time for each file
+docs/                data dictionary, conventions, runbook
+sql/profile/         numbered profiling queries; every claim in the docs names one
+src/ingest.py        resolves the files through the catalogue API and lands them
+src/run_sql.py       runs a .sql file and prints every result
+```
+
+[`docs/conventions.md`](docs/conventions.md) has the rules the build follows and
+why each one is there.
