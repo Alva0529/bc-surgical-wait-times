@@ -103,6 +103,13 @@ file's `COMPLETED` column, while no published count anywhere lies between 1 and
 no longer adds up to the published total, and nothing says so. This pipeline
 carries a withheld value as a distinct state, with a known range.
 
+Carrying the range changes what can be said at the end. Not "the detail is short
+by some amount", which is an observation, but "the true total lies between these
+two numbers", which is a conclusion. Summing the per-cell bounds over the annual
+file, the published province total falls inside them in all 17 fiscal years —
+and in the 12 years with nothing suppressed at that level, the bounds collapse
+onto each other and match the published total exactly.
+
 ### 3. Percentiles can't be added or averaged
 
 The 50th and 90th percentile wait times cannot be recomputed from aggregated
