@@ -1,0 +1,40 @@
+# Runs the test suite on every push and pull request to main.
+#
+# No data is downloaded here. The structural assertions build the silver layer
+# from the fixture workbooks committed under tests/fixtures/, so they run on a
+# bare clone.
+#
+# The current-data assertions need data/warehouse.duckdb, which is built from
+# the published files and never committed. They skip, and the run ends with a
+# block saying so. That is the intended state: this workflow checks the
+# pipeline, and the published files are checked locally after each ingest, as
+# docs/runbook.md describes.
+#
+# The silver SQL reads xlsx through DuckDB's excel extension, which DuckDB
+# downloads on first use. That is the one network call this job makes.
+
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest
