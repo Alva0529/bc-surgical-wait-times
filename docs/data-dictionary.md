@@ -586,6 +586,14 @@ the two files:
 This is exactly the kind of silent error this project exists to expose. The
 handling must be explicit and must not rely on default behaviour.
 
+**Implemented** in `sql/silver/02_silver_quarterly.sql`. The precedence rule is
+written out in three named steps, and each row carries `is_interim` and
+`source_resource_id`. Today nothing is dropped, because the two files do not
+overlap: the rule is in place for when they do. The same file ends with two
+diagnostic queries. They report the coverage of each source and of the combined
+table, and list the quarters missing between the first and the last published
+one — currently 2025/26 Q1 to Q4, and nothing else.
+
 **Proposed handling (to decide in the silver step):**
 
 - **An explicit precedence rule, written in the silver SQL.** For any quarter
