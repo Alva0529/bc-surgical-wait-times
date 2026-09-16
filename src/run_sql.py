@@ -1,8 +1,9 @@
 """
-Run a SQL file against an in-memory DuckDB database and print every result.
+Run a SQL file against DuckDB and print every result.
 
 Usage, from the repository root:
     python src/run_sql.py sql/profile/01_time_coverage.sql
+    python src/run_sql.py sql/silver/01_silver_annual.sql data/warehouse.duckdb
 """
 import sys
 from pathlib import Path
@@ -16,7 +17,11 @@ def main():
     sys.stdout.reconfigure(encoding="utf-8")
 
     sql = Path(sys.argv[1]).read_text(encoding="utf-8")
-    connection = duckdb.connect()
+
+    # A second argument names a database file to build into. Without one the
+    # database is in memory, which is all a profiling query needs.
+    database = sys.argv[2] if len(sys.argv) > 2 else ":memory:"
+    connection = duckdb.connect(database)
 
     # Running the whole file at once would only return the last result. Each
     # statement runs separately, on the same connection, so variables and temp

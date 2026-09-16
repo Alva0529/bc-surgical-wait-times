@@ -375,6 +375,36 @@ fourth state for them or fails loudly when it meets one. See Open question 5.
 - pytest asserts that a blank percentile next to `COMPLETED` of 5 or more is not
   classified as either of those.
 
+## Requirement for silver: a suppressed count carries its bounds
+
+**MUST.** Every count in a silver table is followed by `<measure>_min` and
+`<measure>_max`. For a reported count both equal the value. For a suppressed
+count they are **1 and 4**.
+
+**The bounds rest on one inference: that `<5` stands for 1 to 4, not 0 to 4.**
+Two independent lines of evidence support it:
+
+1. **Zeros are published.** A literal `0` appears 15,771 times in the quarterly
+   file's `COMPLETED` column and 19,783 times in `WAITING`, while no published
+   count anywhere lies between 1 and 4 (`sql/profile/02_suppression.sql`,
+   section 4). The rule withholds 1 to 4 and leaves 0 alone.
+2. **The province-wide arithmetic comes out right.** Summing the procedure
+   categories against the published `All Procedures` total leaves a gap of one
+   case per suppressed group in the annual file, and 22 cases over 11 suppressed
+   groups in the quarterly file (`sql/profile/03_grain.sql`, sections 3b and 3c).
+   A suppressed cell that could be zero would allow a gap of zero. None was
+   observed, and no gap ran past 4 cases per suppressed group.
+
+Checked end to end once `silver_annual` existed: in all 17 fiscal years the
+published province total falls inside `sum(completed_min)` and
+`sum(completed_max)` taken over the 84 categories.
+
+**Why the bounds are columns rather than a rule in a later query.** If that
+inference is ever disproved — if a zero can be suppressed after all — the fix is
+two `CASE` expressions in `sql/silver/`, and every downstream number moves with
+it. The same rule spread across reconciliation queries would have to be hunted
+down first.
+
 ## Open questions
 
 ### 1. When the Ministry publishes new data, does it update the existing resource or create a new one?
@@ -663,3 +693,11 @@ as not applicable. Silver either carries a fourth state for them, or fails
 loudly when it meets one. Both states have defined meanings — "a count of 1 to
 4", "no value exists" — and putting an unexplained blank into either one would
 make Step 5 reconcile against a number nobody has checked.
+
+**MUST: the number of unexplained rows is asserted in pytest.** Today it is 95:
+54 quarterly, 39 annual, 2 interim. A state column is only a string, and 95 rows
+out of 264,610 are easy to lose sight of — a `WHERE state = 'suppressed'` that
+should have been an `IN` list would drop them without a word. The assertion
+turns this entry from a note somebody has to remember into something checked on
+every run. If a later release grows the count to 200, the build fails, and a
+phenomenon nobody understands has demonstrably spread.

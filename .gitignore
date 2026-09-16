@@ -5,6 +5,10 @@ data/processed/*
 !data/processed/.gitkeep
 !data/raw/_manifest.json
 
+# The warehouse is rebuilt from the raw files, never committed
+*.duckdb
+*.duckdb.wal
+
 # Local working notes, not part of the repository
 CLAUDE.md
 
