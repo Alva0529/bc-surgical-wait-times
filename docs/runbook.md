@@ -78,6 +78,22 @@ quotes if the wording has changed.
   (`sql/profile/01_time_coverage.sql`, section 5), so a default read of it loses
   nothing. That is a fact about this file today, not about the reader.
 
+### A rule that cries wolf is not a rule
+
+The gap diagnostic in `sql/silver/02_silver_quarterly.sql` first reported seven
+missing quarters: the four that really are missing, and the three remaining
+quarters of the fiscal year in progress. Those three are not missing. They have
+not happened yet.
+
+Left as it was, that query would have produced three false alarms every year,
+for ever. Whoever read it would have learned to skim past the output, including
+in the year a real gap appeared. Filtering to quarters before the last published
+one cut the output to the four that matter.
+
+Every quality rule written from here on gets the same question before it is
+committed: **does it fire when nothing is wrong?** A rule that does is not a
+rule. It is noise that trains people to ignore it.
+
 ### A note on reading results
 
 When those blank rows were first checked, the outcome table written beforehand
