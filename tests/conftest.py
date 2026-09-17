@@ -27,12 +27,15 @@ REBUILD_COMMANDS = (
     "python src/ingest.py\n"
     "    python src/run_sql.py sql/silver/01_silver_annual.sql data/warehouse.duckdb\n"
     "    python src/run_sql.py sql/silver/02_silver_quarterly.sql data/warehouse.duckdb\n"
+    "    python src/run_sql.py sql/gold/01_dim_period.sql data/warehouse.duckdb\n"
     "    python -m pytest -m realdata"
 )
 
-SILVER_SQL = [
+# Built in order: gold reads silver.
+BUILD_SQL = [
     REPO_ROOT / "sql" / "silver" / "01_silver_annual.sql",
     REPO_ROOT / "sql" / "silver" / "02_silver_quarterly.sql",
+    REPO_ROOT / "sql" / "gold" / "01_dim_period.sql",
 ]
 
 # The fixture rows are written out in tests/fixtures/build_fixtures.py. Tests
@@ -50,7 +53,8 @@ def fixture_rows():
 
 @pytest.fixture(scope="session")
 def silver(tmp_path_factory):
-    """A read-only connection to silver tables built from the fixture workbooks.
+    """A read-only connection to the silver tables and gold views built from the
+    fixture workbooks.
 
     Session scoped: every test reads the same build, which keeps three workbook
     parses out of each test.
@@ -64,7 +68,7 @@ def silver(tmp_path_factory):
     shutil.copy(FIXTURE_DIR / "_manifest.json", raw_dir / "_manifest.json")
 
     database = work_dir / "fixture.duckdb"
-    for sql_file in SILVER_SQL:
+    for sql_file in BUILD_SQL:
         result = subprocess.run(
             [sys.executable, str(REPO_ROOT / "src" / "run_sql.py"),
              str(sql_file), str(database)],

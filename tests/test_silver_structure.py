@@ -261,3 +261,65 @@ def test_blank_rows_are_not_loaded(silver, fixture_rows):
                        procedure_group) IS NULL
     """).fetchone()[0]
     assert empty == 0, f"silver_annual holds {empty} rows with no dimensions"
+
+
+def test_dim_quarter_has_a_row_for_every_quarter_in_its_span(silver):
+    """Guards the dimension's reason to exist: a missing quarter is a row, not a hole.
+
+    Each quarter must start the day after the previous one ends, with no key
+    repeated. A failure means the calendar in sql/gold/01_dim_period.sql skipped
+    or duplicated a period, and a trend line built on it would be drawn over a
+    gap without showing one.
+    """
+    holes = silver.sql("""
+        SELECT period_label, starts_on, previous_end
+        FROM (
+            SELECT period_label, starts_on,
+                   lag(ends_on) OVER (ORDER BY starts_on) AS previous_end
+            FROM dim_quarter
+        )
+        WHERE previous_end IS NOT NULL AND starts_on <> previous_end + INTERVAL 1 DAY
+    """).fetchall()
+    assert holes == [], f"dim_quarter is not continuous at {holes}"
+
+    rows, keys = silver.sql(
+        "SELECT count(*), count(DISTINCT (fiscal_year, quarter)) FROM dim_quarter"
+    ).fetchone()
+    assert rows == keys, f"dim_quarter has {rows} rows across {keys} distinct quarters"
+
+
+def test_dim_quarter_agrees_with_the_facts_about_what_was_published(silver):
+    """Guards is_published against drifting away from the rows it describes.
+
+    A quarter is published when the quarterly table holds rows for it. A failure
+    means the flag and the facts disagree, so anything trusting the flag — a
+    chart, a period-over-period measure — is reading a period that is not there,
+    or skipping one that is.
+    """
+    disagreements = silver.sql("""
+        SELECT d.period_label, d.is_published, count(f.fiscal_year) AS fact_rows
+        FROM dim_quarter AS d
+        LEFT JOIN silver_quarterly AS f
+            ON f.fiscal_year = d.fiscal_year AND f.quarter = d.quarter
+        GROUP BY d.period_label, d.is_published
+        HAVING d.is_published <> (count(f.fiscal_year) > 0)
+    """).fetchall()
+
+    assert disagreements == [], (
+        f"dim_quarter.is_published disagrees with silver_quarterly at {disagreements}"
+    )
+
+
+def test_dim_quarter_stops_at_the_last_published_quarter(silver):
+    """Guards against the dimension calling the unfinished fiscal year missing.
+
+    The quarters after the last published one have not happened yet. Listing
+    them as unpublished would put three false gaps in every chart each year, and
+    a rule that cries wolf gets ignored when it finally means something.
+    """
+    beyond = silver.sql("""
+        SELECT period_label FROM dim_quarter
+        WHERE ends_on > (SELECT max(ends_on) FROM dim_quarter WHERE is_published)
+    """).fetchall()
+
+    assert beyond == [], f"dim_quarter runs past the last published quarter: {beyond}"

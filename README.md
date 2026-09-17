@@ -258,11 +258,13 @@ step 8 of the roadmap.
 ```
 data/raw/            source files, not committed
 data/raw/_manifest.json   source URL, sha256 and fetch time for each file
-docs/                data dictionary, conventions, runbook
+docs/                data dictionary, conventions, runbook, what is left out on purpose
 sql/profile/         numbered profiling queries; every claim in the docs names one
 src/ingest.py        resolves the files through the catalogue API and lands them
 src/run_sql.py       runs a .sql file and prints every result
 ```
 
 [`docs/conventions.md`](docs/conventions.md) has the rules the build follows and
-why each one is there.
+why each one is there. [`docs/not-provided.md`](docs/not-provided.md) has what
+the model deliberately does not give you, and what to do instead — an average of
+percentiles, a `waiting` figure summed across quarters, and two others.

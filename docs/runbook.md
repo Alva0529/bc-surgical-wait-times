@@ -32,6 +32,47 @@ quotes if the wording has changed.
   `/about`). It is still listed in the catalogue metadata. Do not rely on it for
   documentation. Use the Ministry page above instead.
 
+## Gold: why the dimensions have no surrogate keys
+
+Asked directly: this was priced, not forgotten.
+
+A surrogate key is worth having when it is stable. A key generated inside a view
+is not: `row_number()` renumbers as soon as a hospital is added upstream, and
+anything that stored the old numbers — an export, a report, a cached model —
+silently points at the wrong row. Making the keys stable means materialising the
+dimensions, which spends the property that gold is a set of views over silver,
+and adds tables that can drift from their own definitions.
+
+What it would buy at this size: 6 health authorities, 65 hospitals, 85 procedure
+groups, 69 quarters, and fact tables of 206,000 and 58,000 rows. An integer join
+instead of a short-string join over that is not measurable in DuckDB.
+
+So gold joins on the publisher's own values. The cost is honest: text keys are
+wider, and a renamed hospital looks like a new one — which is a real
+consideration for the facility dimension, and is why the current-data assertions
+pin the hospital count.
+
+**When this should be revisited:** the T-SQL port (step 8), where a conventional
+star schema is expected, or the first time a query is measurably slow. Either
+way the decision comes with the materialisation rules below.
+
+## Materialising a gold view
+
+Gold is views. Materialise one only when all three of these are true:
+
+1. **There is a measurement.** The query, its timing before and after, and the
+   date. Not an impression that something felt slow.
+2. **There is a rebuild command**, written here. A materialised table whose
+   origin nobody knows is worse than a slow view.
+3. **There is a drift test.** An assertion that the table still equals the view
+   definition it was built from. Materialising copies a definition into data,
+   and a copy goes stale without saying so.
+
+Exporting gold for Power BI is not this. That is a snapshot for a tool, not a
+performance decision, and it carries its own rule: it must be reproducible and
+must record the manifest sha256 of the files it came from, so a number on a
+dashboard can be traced to a specific version of the published data.
+
 ## Tests
 
 ```bash
@@ -58,6 +99,7 @@ own rather than a single `s`.
 python src/ingest.py
 python src/run_sql.py sql/silver/01_silver_annual.sql data/warehouse.duckdb
 python src/run_sql.py sql/silver/02_silver_quarterly.sql data/warehouse.duckdb
+python src/run_sql.py sql/gold/01_dim_period.sql data/warehouse.duckdb
 python -m pytest -m realdata
 ```
 

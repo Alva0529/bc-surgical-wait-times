@@ -196,3 +196,23 @@ def test_published_totals_sit_inside_the_summed_bounds(warehouse):
     assert outside == [], (
         f"published totals fall outside the summed bounds in {outside}"
     )
+
+
+def test_the_only_unpublished_quarters_are_the_documented_gap(warehouse):
+    """Pins the gap as the model states it: 2025/26 Q1 to Q4 and nothing else.
+
+    This is the documented gap turned into rows. A failure most likely means the
+    cumulative file received its yearly update and the year filled in, which is
+    the event Open question 2 in docs/data-dictionary.md waits for. Rerun the
+    ingest, rebuild, and read the diagnostics in sql/gold/01_dim_period.sql
+    before changing this list.
+    """
+    unpublished = warehouse.sql("""
+        SELECT fiscal_year, quarter FROM dim_quarter
+        WHERE NOT is_published ORDER BY starts_on
+    """).fetchall()
+
+    assert unpublished == MISSING_QUARTERS, (
+        f"dim_quarter reports {unpublished} as unpublished, documented as "
+        f"{MISSING_QUARTERS}"
+    )
