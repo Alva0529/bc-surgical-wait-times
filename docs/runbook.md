@@ -196,7 +196,20 @@ silence.
 matching the shape of the real data. The same mutation then failed the
 assertion, and only that one.
 
-Two practical notes. Commit before breaking anything: `git checkout --` cannot
+### A mutation that changes nothing proves nothing either
+
+The first attempt at breaking the leaf fact view loosened one of its three
+filter conditions, and the suite stayed green. The assertion was fine: the
+mutation was a no-op. Province rows carry `All Facilities` as their facility, so
+the two remaining conditions still excluded every row the loosened one would
+have let through.
+
+A mutation that leaves the output identical says nothing about the assertion. So
+check what the mutation did before drawing a conclusion from a green run —
+a row count either side is enough. Removing the filter outright failed two
+assertions, which is what the check was after.
+
+Three practical notes. Commit before breaking anything: `git checkout --` cannot
 restore a file git has never seen, and a mutation left behind in an untracked
 file is worse than no check at all. This was learned the same afternoon, on
 these same two files. And break one thing at a time, so that the assertions can
