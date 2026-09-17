@@ -100,8 +100,18 @@ python src/ingest.py
 python src/run_sql.py sql/silver/01_silver_annual.sql data/warehouse.duckdb
 python src/run_sql.py sql/silver/02_silver_quarterly.sql data/warehouse.duckdb
 python src/run_sql.py sql/gold/01_dim_period.sql data/warehouse.duckdb
+python src/run_sql.py sql/gold/02_dim_facility.sql data/warehouse.duckdb
+python src/run_sql.py sql/gold/03_dim_health_authority.sql data/warehouse.duckdb
+python src/run_sql.py sql/gold/04_dim_procedure_group.sql data/warehouse.duckdb
+python src/run_sql.py sql/gold/10_fact_quarterly.sql data/warehouse.duckdb
+python src/run_sql.py sql/gold/11_fact_annual.sql data/warehouse.duckdb
 python -m pytest -m realdata
 ```
+
+This list is also held in `tests/conftest.py` as `BUILD_SQL`, and pytest prints
+it from there when the current-data assertions skip. That copy derives its
+commands from the list of files; this one is typed, so check both when a build
+step is added.
 
 When one of those assertions fails legitimately, the order is: rerun the
 profiling query, update `docs/data-dictionary.md`, then update the number in the
