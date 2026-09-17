@@ -111,6 +111,18 @@ published files do not tell them apart:
 case cannot be distinguished from a facility that simply was not reported, and
 nothing here invents the difference.
 
+**One piece of evidence, covering part of it.** Where a facility and procedure
+group have rows in only three quarters of a fiscal year, the annual figure
+equals those three quarters exactly, in every such case. For a whole quarter
+missing, then, the missing quarter is a real zero and not an omission: the
+annual file corroborates it. This says nothing about the third case above within
+a quarter that is present, which is where the ambiguity actually bites.
+
+That turned up while checking why a mutation failed to break a test: loosening
+the vintage view from four quarters to three added 3,458 rows and moved no
+number, which only made sense if those rows agreed. Interrogating a test that
+did not fail answered a question about the data that nobody had asked.
+
 **If you need to know:** ask the health authority. From the published data, the
 honest statement is "no rows", not "no surgeries".
 

@@ -2,8 +2,8 @@
 
 [![tests](https://github.com/Alva0529/bc-surgical-wait-times/actions/workflows/ci.yml/badge.svg)](https://github.com/Alva0529/bc-surgical-wait-times/actions/workflows/ci.yml)
 
-> **Status: in progress.** Steps 1 to 3 complete, step 4 under way. See Roadmap
-> below.
+> **Status: in progress.** Steps 1 to 5 complete, the Power BI report next.
+> See Roadmap below.
 
 ## What this is
 
@@ -11,11 +11,35 @@ A small end-to-end build on British Columbia's published surgical wait time
 data: ingestion, a layered transformation pipeline, a dimensional model, and a
 reconciliation analysis.
 
-The point of the project is what goes wrong when this data is read with default
-behaviour. The query runs, the chart renders, the number looks plausible, and it
-is wrong. Where the published figures can be checked against each other they
-hold together, to six cases in four million (see 6 below). The errors are the
-reader's, not the publisher's. Six are documented so far.
+The point of it is what goes wrong when this data is read the obvious way. The
+query runs, the chart renders, the number looks plausible, and it is wrong.
+
+## Two numbers
+
+**Adding the published data up by facility and procedure group gives 116,431
+fewer surgeries than the province's own total — 2.9% of seventeen years of
+surgery — with nothing on screen to say so.** Counts below 5 are withheld for
+privacy, and at that grain a third of the cells are withheld.
+
+**The data is not at fault, and that is half the finding.** Across 101,862
+checks of every published total against its own detail, at every level and in
+every period, not one difference falls outside what the suppression rule allows.
+The shortfall is the price of reading the files finer than they were published,
+and [the reconciliation memo](docs/reconciliation-memo.md) prices it by level:
+by health authority, the province's figure comes back exactly.
+
+---
+
+**Open the same file with default settings, sum the completed column, and you
+get 23,152,333 surgeries. The real figure is 3,879,192.**
+
+Two ordinary mistakes, one number. The file carries the publisher's own
+subtotals beside the detail, so each case is counted about six times over. And a
+suppressed count is the literal text `<5`, so the column refuses to load as a
+number — until the reader passes the flag that ignores errors, at which point
+57,948 withheld counts become `NULL` and the sum quietly excludes them.
+
+Nothing raises an error at any point.
 
 ## Data source
 
@@ -48,174 +72,41 @@ already subject to the Ministry's disclosure control rules.
 
 ## Six ways to be wrong without an error
 
-The publisher does not claim this data is complete. The Ministry's page says so
-directly:
+Each of these produces a number that looks right, and none of them raises
+anything. The pipeline handles each explicitly rather than by default; the
+write-up of each is linked beside it.
 
-> The Ministry, in conjunction with the health authorities makes every effort to
-> ensure the data contained on this site is accurate and timely, however it
-> cannot guarantee the completeness of the information as it is gathered from a
-> variety of health authority sources.
-
-A pipeline that treats the published files as complete, and lets defaults fill
-in whatever is missing, assumes exactly what the publisher says it cannot
-guarantee. Below are six ways that goes wrong without an error.
-
-### 1. A year of quarterly data is missing, and the metadata says it isn't
-
-The quarterly file is named `2009_2026` in the catalogue, and its declared
-coverage runs to 2026-03-31. **The file itself ends at 2024/25 Q4.** The interim
-file starts at 2026/27 Q1. None of the dataset's files contains quarterly data
-for 2025/26 (as fetched on 2026-09-15).
-
-**This is not a one-off.** The publisher's own description sets it up. The
-interim file holds "current fiscal year quarters only", and the historical files
-"are updated in September to include data for the previous fiscal year". The two
-updates are not synchronised. In this cycle, the interim file moved on to
-2026/27 and the annual file received 2025/26, both on 2026-08-12. The quarterly
-file has not been updated since 2025-11-05. So the 2025/26 quarters have left one
-file and not yet arrived in the other.
-
-If the updates land in the opposite order, the same window produces the opposite
-error. The historical file gains a year while the interim file still holds it,
-and those quarters appear twice. **A gap and an overlap are two outcomes of the
-same timing window, and that window can open every year.**
-
-Nothing breaks either way. In a gap, a quarterly trend line runs straight across
-the missing year. A `LAG()` over the ordered quarters treats 2024/25 Q4 as the
-quarter before 2026/27 Q1, so a "quarter-on-quarter change" is actually a change
-across five quarters. In an overlap, a `UNION ALL` of the two files counts the
-same quarter twice, and it looks like a surge in surgical volume.
-
-Anyone who trusts the metadata has no reason to check, and a pipeline has no way
-of knowing it is running inside the window. The gap was found only by listing
-every period actually present in the file (`sql/profile/01_time_coverage.sql`).
-
-### 2. Totals don't equal the sum of their parts
-
-The data is released under disclosure control. From the publisher's
-description: "All values less than 5 and their corresponding wait times are
-suppressed. Therefore, rows with total volumes may not match the sum of sub
-rows."
-
-That protection is correct and necessary. The trap is what a pipeline does with
-a withheld value. It is **not zero and not missing**: it is a count of 1 to 4.
-Zero is not suppressed — a literal `0` appears 15,771 times in the quarterly
-file's `COMPLETED` column, while no published count anywhere lies between 1 and
-4. Collapsing a withheld value to `0` understates totals. Collapsing it to
-`NULL` makes it look like a cell that was never reported. Either way, the detail
-no longer adds up to the published total, and nothing says so. This pipeline
-carries a withheld value as a distinct state, with a known range.
-
-Carrying the range changes what can be said at the end. Not "the detail is short
-by some amount", which is an observation, but "the true total lies between these
-two numbers", which is a conclusion. Summing the per-cell bounds over the annual
-file, the published province total falls inside them in all 17 fiscal years —
-and in the 12 years with nothing suppressed at that level, the bounds collapse
-onto each other and match the published total exactly.
-
-### 3. Percentiles can't be added or averaged
-
-The 50th and 90th percentile wait times cannot be recomputed from aggregated
-data, so the publisher provides them separately at every level of the hierarchy.
-They are **not additive and not averageable** across facilities, procedure
-groups or periods. A dashboard that averages them shows a wait time nobody
-actually waited, however reasonable it looks.
-
-### 4. `WAITING` is a snapshot, so adding it up across periods means nothing
-
-`COMPLETED` counts cases done during a period: four quarters add up to the
-fiscal year, exactly in every year from 2009/10 to 2019/20 and within 0.2%
-since. `WAITING` counts
-cases on the list at a point in time: four quarters add up to **3.8 to 4.3 times
-the annual figure**, in every one of the 16 complete fiscal years.
-
-The two columns sit side by side in the same table, both whole numbers. A BI tool
-sums both by default.
-
-### 5. One suppression rule, two encodings, two different failures
-
-The same rule is written into the files two different ways. A suppressed count
-is the literal text `<5`. A suppressed percentile is an empty cell. Same file,
-same rule, two encodings — and they behave nothing alike.
-
-**The count columns contain text.** DuckDB's `read_xlsx` reads the column as a
-number and stops at the first `<5` cell (F35 of the quarterly file). pandas
-keeps the column as `object`, and `df['COMPLETED'].sum()` raises a `TypeError`.
-Both refuse to guess, which is the good case. Tell either one to ignore the
-errors and all 57,948 suppressed counts turn into the same `NULL` used for a
-value that was never reported: with `ignore_errors = true`, DuckDB totals
-23,152,333 completed cases and says nothing.
-
-**The percentile columns are numbers with blanks.** They load cleanly
-everywhere. Every aggregate skips the blanks on its own:
-`avg(PERCENTILE_COMP_50TH)` over the quarterly file returns 8.25 weeks, computed
-from 129,180 of 202,953 rows. The 73,773 rows left out are the suppressed ones
-and the ones where nothing was completed — the small facilities. Nothing in the
-result mentions that a third of the file did not take part. And by 3 above, an
-average of percentiles was never a wait time anybody had.
-
-The counts announce the problem. The percentiles never do.
-
-### 6. `All Other Procedures` looks like a total and is not
-
-`PROCEDURE_GROUP` holds 85 values: `All Procedures`, which is the total, and 84
-real categories. One of those categories is called `All Other Procedures` — the
-residual bucket, everything not in a named group. A filter written as
-`LIKE 'All %'`, which is how "drop the total rows" usually gets written, drops it
-along with the total.
-
-Province-wide in the annual file, fiscal 2009/10 to 2025/26:
-
-| | Completed surgeries |
-|---|---|
-| Published `All Procedures` total | 4,169,291 |
-| Short by, adding up the 84 categories | **6** |
-| Short by, once `All Other Procedures` is dropped as a "total" | **110,827** |
-
-Six cases in seventeen years. Each of those six sits in a year where exactly one
-procedure group was suppressed province-wide, and each gap is between 1 and 4 —
-the range `<5` stands for. The quarterly file behaves the same way: 22 cases
-across 64 quarters, from 11 suppressed groups, every gap inside the same bound.
-
-So the published detail reconciles to the published totals, once suppression is
-accounted for. The 110,827 are not in the data. They are what one plausible line
-of SQL costs.
-
----
-
-All six have the same shape. The default behaviour — trusting the metadata,
-connecting the points, summing the column, letting a blank drop out of an
-average, pattern-matching a label — produces a wrong number and no error. This
-pipeline is built to handle each one explicitly and never leave it to a default.
+| | The obvious reading | What it actually does |
+|---|---|---|
+| **1** | Trust the metadata: the quarterly file says it covers 2025/26 | It ends at 2024/25 Q4. No file publishes that year, so a trend line runs straight across it and `LAG()` calls a five-quarter jump a quarter-on-quarter change. Gap and overlap are two outcomes of the same publishing window. [Open question 2](docs/data-dictionary.md) |
+| **2** | Read a withheld count as zero, or as missing | It is a count of 1 to 4. Zeros are published — 15,771 of them — so the detail sums short of the published total by an amount nothing reports. [Bounds requirement](docs/data-dictionary.md) |
+| **3** | Average the wait-time percentiles | A percentile cannot be rebuilt from aggregates. Ten facilities' 90th percentiles averaged is a wait nobody had. [not-provided.md](docs/not-provided.md) |
+| **4** | Sum `WAITING` across quarters, as one sums `COMPLETED` | It is a snapshot, not a flow: four quarters come to 3.8–4.3 times the annual figure. The two columns sit side by side, both whole numbers. [not-provided.md](docs/not-provided.md) |
+| **5** | Read both kinds of measure column the same way | One suppression rule, two encodings: `<5` in the counts, an empty cell in the percentiles. The counts refuse to load, which is the good case. The percentiles load and vanish from every average — `avg()` returns 8.25 weeks from 129,180 of 202,953 rows. [Runbook pitfalls](docs/runbook.md) |
+| **6** | Drop total rows with `LIKE 'All %'` | `All Other Procedures` is a category, not a total. Dropping it removes 110,827 completed surgeries from the annual file. [Hierarchy totals](docs/data-dictionary.md) |
 
 One thing this pipeline will not do is fill in a withheld value. Not
-proportionally, not at the midpoint of 1 and 4, not at all. A suppressed count is
-reported as the interval the publisher's own rule guarantees, and
-[`docs/not-provided.md`](docs/not-provided.md) says why at length. The short
-version: "assuming every suppressed cell is 2" is a defensible sentence in a
-report, because the assumption travels with the number — it has an author, a
-date and a reason. A column called `completed_cases_estimated`, sitting in a
-warehouse six months later, carries none of that. An estimate that leaves its
-context behind stops being an estimate and becomes a fact.
-
-None of this is a complaint about the data. Where the published figures can be
-checked against each other, they hold: the detail adds up to the published
-totals to within six cases in 4,169,291, and every gap that remains is one
-suppressed group of 1 to 4 cases. The Ministry publishes what it says it
-publishes, under a suppression rule it documents. What this project is about is
-how that data gets read.
+proportionally, not at the midpoint of 1 and 4, not at all. A suppressed count
+is carried as the interval the publisher's own rule guarantees.
+[`docs/not-provided.md`](docs/not-provided.md) lists everything else left out on
+purpose, and why. The short version: "assuming every suppressed cell is 2" is a
+defensible sentence in a report, because the assumption travels with the number
+— it has an author, a date and a reason. A column called
+`completed_cases_estimated`, sitting in a warehouse six months later, carries
+none of that. An estimate that leaves its context behind stops being an estimate
+and becomes a fact.
 
 ## Roadmap
 
 - [x] **1. Ingest** — resolve files through the catalogue API, land them
   unchanged, record source URL, checksum, and fetch time
-- [ ] **2. Data dictionary** — document grain, columns, and the suppression
+- [x] **2. Data dictionary** — document grain, columns, and the suppression
   encoding as published
-- [ ] **3. Silver** — typed and reshaped, with suppression carried as an
+- [x] **3. Silver** — typed and reshaped, with suppression carried as an
   explicit state; data quality rules expressed as tests
-- [ ] **4. Gold** — dimensional model (health authority, facility, procedure
+- [x] **4. Gold** — dimensional model (health authority, facility, procedure
   group, fiscal period)
-- [ ] **5. Reconciliation** — quantify the gap between published totals and the
+- [x] **5. Reconciliation** — quantify the gap between published totals and the
   sum of published detail, by level and period
 - [ ] **6. Report** — Power BI dashboard on the gold views
 - [ ] **7. Forecast** — case backlog trend, experiments tracked in MLflow
