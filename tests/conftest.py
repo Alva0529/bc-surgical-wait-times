@@ -23,20 +23,25 @@ FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
 # fresh clone and in CI.
 WAREHOUSE = REPO_ROOT / "data" / "warehouse.duckdb"
 
-REBUILD_COMMANDS = (
-    "python src/ingest.py\n"
-    "    python src/run_sql.py sql/silver/01_silver_annual.sql data/warehouse.duckdb\n"
-    "    python src/run_sql.py sql/silver/02_silver_quarterly.sql data/warehouse.duckdb\n"
-    "    python src/run_sql.py sql/gold/01_dim_period.sql data/warehouse.duckdb\n"
-    "    python -m pytest -m realdata"
-)
-
 # Built in order: gold reads silver.
 BUILD_SQL = [
     REPO_ROOT / "sql" / "silver" / "01_silver_annual.sql",
     REPO_ROOT / "sql" / "silver" / "02_silver_quarterly.sql",
     REPO_ROOT / "sql" / "gold" / "01_dim_period.sql",
+    REPO_ROOT / "sql" / "gold" / "02_dim_facility.sql",
+    REPO_ROOT / "sql" / "gold" / "03_dim_health_authority.sql",
+    REPO_ROOT / "sql" / "gold" / "04_dim_procedure_group.sql",
 ]
+
+# The same list, written as the commands a person runs. Derived rather than
+# typed out again, so that adding a build step cannot leave the instructions
+# printed on a skip pointing at yesterday's pipeline.
+REBUILD_COMMANDS = "\n    ".join(
+    ["python src/ingest.py"]
+    + [f"python src/run_sql.py {sql.relative_to(REPO_ROOT).as_posix()} "
+       f"data/warehouse.duckdb" for sql in BUILD_SQL]
+    + ["python -m pytest -m realdata"]
+)
 
 # The fixture rows are written out in tests/fixtures/build_fixtures.py. Tests
 # import them from there rather than repeating a number the fixture already

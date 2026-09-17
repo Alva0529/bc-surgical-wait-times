@@ -169,6 +169,17 @@ An assertion can pass because the rows it looks at are not there at all. Where
 that is possible, assert first that the rows exist — the percentile
 classification test does this, and says so in its failure message.
 
+Breaking the logic is also how a gap in the fixture shows up. The assertion that
+`dim_facility` covers every facility could not fail when the annual file was
+dropped from it, because every facility in the annual fixture also appeared in
+the quarterly one. The fixture now carries a facility that only the annual file
+names, as the real data does.
+
+Two practical notes. Commit before breaking anything: `git checkout --` cannot
+restore a file git has never seen, and a mutation left behind in an untracked
+file is worse than no check at all. And break one thing at a time, so that the
+assertions can be seen not to be covering for each other.
+
 ### A rule that cries wolf is not a rule
 
 The gap diagnostic in `sql/silver/02_silver_quarterly.sql` first reported seven

@@ -24,8 +24,9 @@ The rows are chosen to cover every case silver has to get right:
   different figures, so that the precedence rule has something to act on. The
   real files do not overlap today, so this is the only place that rule can be
   tested.
-- a hospital that the interim file does not have, so that a dimension built
-  from one file alone can be shown to be short
+- a hospital that the interim file does not have, and one that only the annual
+  file has, so that a dimension built from fewer than three files can be shown
+  to be short
 """
 import json
 from pathlib import Path
@@ -75,6 +76,11 @@ ANNUAL_ROWS = [
     ("2023/24", "Northern", "G.R. Baker Memorial Hospital", "All Procedures", 88, 260, 5.0, 20.0),
     # A hospital the interim file does not have.
     ("2023/24", "Northern", "Kitimat General Hospital", "Biopsy in OR", 12, 34, 2.6, 9.9),
+    # A hospital only this file has: it stopped reporting before the quarters the
+    # other two fixtures cover, like the six retired facilities in the real data.
+    # Without it, a dimension built from the quarterly files alone would look
+    # complete.
+    ("2023/24", "Fraser", "Mission Memorial Hospital", "Cataract Surgery", 41, 130, 4.8, 18.1),
 
     ("2024/25", "All Health Authorities", "All Facilities", "All Procedures", 95200, 289812, 6.0, 29.1),
     ("2024/25", "All Health Authorities", "All Facilities", "All Other Procedures", 2103, 9345, 4.4, 19.2),

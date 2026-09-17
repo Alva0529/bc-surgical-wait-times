@@ -323,3 +323,93 @@ def test_dim_quarter_stops_at_the_last_published_quarter(silver):
     """).fetchall()
 
     assert beyond == [], f"dim_quarter runs past the last published quarter: {beyond}"
+
+
+def test_dim_facility_covers_every_facility_in_the_facts(silver):
+    """Guards the union rule: a dimension built from one file drops the others' rows.
+
+    Every (health authority, facility) pair in either fact table must have
+    exactly one row in dim_facility. A failure means sql/gold/02_dim_facility.sql
+    stopped taking the union, and the rows belonging to facilities that only
+    appear in the files it skipped would fall out of every join.
+    """
+    unmatched = silver.sql("""
+        WITH pairs AS (
+            SELECT DISTINCT health_authority, hospital_name FROM silver_quarterly
+            UNION
+            SELECT DISTINCT health_authority, hospital_name FROM silver_annual
+        )
+        SELECT pairs.health_authority, pairs.hospital_name,
+               count(dim_facility.hospital_name) AS dimension_rows
+        FROM pairs
+        LEFT JOIN dim_facility
+            ON dim_facility.health_authority = pairs.health_authority
+           AND dim_facility.hospital_name    = pairs.hospital_name
+        GROUP BY pairs.health_authority, pairs.hospital_name
+        HAVING count(dim_facility.hospital_name) <> 1
+    """).fetchall()
+
+    assert unmatched == [], f"dim_facility does not hold exactly one row for {unmatched}"
+
+
+def test_dimension_source_flags_agree_with_the_facts(silver):
+    """Guards the flags that say which file a member came from.
+
+    They are what tells a facility absent from a file from one that simply has
+    no rows in a period, and the two look the same in a report. A failure means
+    a flag in sql/gold/ no longer matches the rows it claims to describe.
+    """
+    disagreements = silver.sql("""
+        WITH seen AS (
+            SELECT health_authority, hospital_name,
+                   bool_or(NOT is_interim) AS in_quarterly,
+                   bool_or(is_interim)     AS in_interim
+            FROM silver_quarterly
+            GROUP BY health_authority, hospital_name
+        )
+        SELECT d.health_authority, d.hospital_name,
+               d.in_quarterly_file, seen.in_quarterly,
+               d.in_interim_file, seen.in_interim
+        FROM dim_facility AS d
+        LEFT JOIN seen
+            ON seen.health_authority = d.health_authority
+           AND seen.hospital_name    = d.hospital_name
+        WHERE d.in_quarterly_file IS DISTINCT FROM coalesce(seen.in_quarterly, false)
+           OR d.in_interim_file   IS DISTINCT FROM coalesce(seen.in_interim, false)
+    """).fetchall()
+
+    assert disagreements == [], f"dim_facility source flags are wrong for {disagreements}"
+
+
+def test_the_dimensions_flag_totals_and_the_residual_category(silver):
+    """Guards the flags that let downstream queries never look at a name.
+
+    'All Procedures' is a total; 'All Other Procedures' is a category that reads
+    like one. A failure means a filter written against these flags would either
+    double count a total or drop 110,827 real surgeries, which is the whole
+    reason the flags exist rather than a LIKE.
+    """
+    procedures = dict(silver.sql("""
+        SELECT procedure_group, (is_total, is_residual) FROM dim_procedure_group
+        WHERE procedure_group IN ('All Procedures', 'All Other Procedures',
+                                  'Appendectomy')
+    """).fetchall())
+
+    assert procedures["All Procedures"] == (True, False)
+    assert procedures["All Other Procedures"] == (False, True)
+    assert procedures["Appendectomy"] == (False, False)
+
+    facilities = dict(silver.sql("""
+        SELECT hospital_name, bool_and(is_total) FROM dim_facility
+        GROUP BY hospital_name
+    """).fetchall())
+    assert facilities["All Facilities"] is True
+    assert all(is_total is False for name, is_total in facilities.items()
+               if name != "All Facilities")
+
+    authorities = dict(silver.sql(
+        "SELECT health_authority, is_total FROM dim_health_authority"
+    ).fetchall())
+    assert authorities["All Health Authorities"] is True
+    assert all(is_total is False for name, is_total in authorities.items()
+               if name != "All Health Authorities")

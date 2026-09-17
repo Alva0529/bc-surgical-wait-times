@@ -31,6 +31,11 @@ percentile for a group of hospitals that is not one of their groupings, it
 cannot be computed from this data at all. It needs the case-level records, which
 are not public.
 
+In business terms: "what is the average wait in the Interior?" is not a question
+this data answers by averaging its hospitals. "What was the 90th percentile wait
+for hip replacement in the Interior in 2024/25?" is, and the publisher has
+already worked it out.
+
 ---
 
 ## No aggregation of `waiting` across periods
@@ -75,6 +80,11 @@ keys there, and add the drift test described in `runbook.md` so the materialised
 copy cannot fall out of step with its definition. That is planned work, step 8
 of the roadmap.
 
+In business terms: "will the reference I saved for this hospital still mean the
+same hospital next quarter?" With the publisher's own name as the key, yes,
+until the publisher renames it — and the tests pin the facility roster so a
+rename shows up as a failure rather than as a hospital that quietly appears new.
+
 ---
 
 ## No fact view mixing detail rows with the publisher's total rows
@@ -96,3 +106,9 @@ sums detail, because that view holds nothing else.
 is the reconciliation, and it has its own view. It joins the two deliberately,
 which is the point — it is the one place where mixing them is the intent rather
 than the accident.
+
+In business terms: "how many surgeries were completed in BC in 2024/25?" has two
+defensible answers — the figure the Ministry publishes, and the total of what
+individual hospitals reported. They differ by whatever suppression hides. Asking
+one table for both is what produces a third number, twice the size, that answers
+neither.

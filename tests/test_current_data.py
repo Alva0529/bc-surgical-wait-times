@@ -216,3 +216,32 @@ def test_the_only_unpublished_quarters_are_the_documented_gap(warehouse):
         f"dim_quarter reports {unpublished} as unpublished, documented as "
         f"{MISSING_QUARTERS}"
     )
+
+
+def test_the_facilities_missing_from_the_interim_file_are_retired_ones(warehouse):
+    """Pins why the facility dimension is a union of all three files.
+
+    Six facilities are in the historical files and not in the interim one, and
+    none of them is merely idle: each stopped reporting before the interim
+    quarter, the most recent in 2021/22 Q2. A failure means the roster changed —
+    a facility closed, opened or was renamed — which is ordinary, and worth
+    knowing about. Rerun the diagnostic at the end of
+    sql/gold/02_dim_facility.sql.
+    """
+    absent = warehouse.sql("""
+        SELECT hospital_name, last_quarter_seen FROM dim_facility
+        WHERE NOT is_total AND NOT in_interim_file
+        ORDER BY hospital_name
+    """).fetchall()
+
+    assert len(absent) == HOSPITALS["annual"] - HOSPITALS["interim"], (
+        f"{len(absent)} facilities are absent from the interim file, documented "
+        f"as {HOSPITALS['annual'] - HOSPITALS['interim']}"
+    )
+
+    interim_label = f"{INTERIM_QUARTER[0]} {INTERIM_QUARTER[1]}"
+    still_active = [row for row in absent if row[1] >= interim_label]
+    assert still_active == [], (
+        f"these facilities are absent from the interim file but were reporting "
+        f"in {interim_label}: {still_active}"
+    )

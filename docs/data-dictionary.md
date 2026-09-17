@@ -200,11 +200,21 @@ Counts and boundaries are recorded here; the lists themselves come back from
 - **`HOSPITAL_NAME`: 65 hospitals** in the quarterly and annual files, **59** in
   the interim file, plus the total value `All Facilities`.
 
-**Requirement for silver (Step 3), MUST: the hospital dimension is the union of
-all three files.** The interim file is short 6 hospitals because it covers a
-single quarter, and those hospitals have no rows in it. That is not missing
-data. A hospital dimension built from one file alone would not carry the
-hospitals the other files need, and historical rows would fail to join.
+**Requirement, MUST: the facility dimension is the union of all three files.**
+Implemented as `dim_facility` in `sql/gold/02_dim_facility.sql`.
+
+The interim file names 59 facilities against the other files' 65, and the
+reason is not that those six were idle for a quarter. **They stopped reporting
+altogether**: the most recent in 2021/22 Q2, the oldest in 2009/10 Q3. Five
+other facilities appear partway through the series rather than at the start, the
+newest in 2021/22 Q2. Over seventeen years the roster changes, so a dimension
+built from the current quarter would fail to join most of the history.
+
+`dim_facility` carries `in_quarterly_file`, `in_interim_file` and
+`in_annual_file`, plus the first and last period each facility was seen in.
+Without those, a facility with no rows in a period is indistinguishable from a
+facility that is not in that file at all, and the two look identical in a
+report.
 
 No dimension column contains a NULL in any file.
 
