@@ -33,6 +33,9 @@ BUILD_SQL = [
     REPO_ROOT / "sql" / "gold" / "04_dim_procedure_group.sql",
     REPO_ROOT / "sql" / "gold" / "10_fact_quarterly.sql",
     REPO_ROOT / "sql" / "gold" / "11_fact_annual.sql",
+    REPO_ROOT / "sql" / "gold" / "20_reconciliation_quarterly.sql",
+    REPO_ROOT / "sql" / "gold" / "21_reconciliation_annual.sql",
+    REPO_ROOT / "sql" / "gold" / "22_vintage.sql",
 ]
 
 # The same list, written as the commands a person runs. Derived rather than
