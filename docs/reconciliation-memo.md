@@ -116,7 +116,7 @@ Queries: `sql/gold/20_reconciliation_quarterly.sql`,
 
 ## What is still unexplained
 
-**8,841 checks could not be made**, because the parent row was itself withheld.
+**8,941 checks could not be made**, because the parent row was itself withheld.
 A suppressed total has no figure to compare its children against. These are
 small facilities in small procedure groups, and they are reported as
 not-checkable rather than counted as passing.
