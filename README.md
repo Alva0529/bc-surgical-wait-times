@@ -188,6 +188,16 @@ connecting the points, summing the column, letting a blank drop out of an
 average, pattern-matching a label — produces a wrong number and no error. This
 pipeline is built to handle each one explicitly and never leave it to a default.
 
+One thing this pipeline will not do is fill in a withheld value. Not
+proportionally, not at the midpoint of 1 and 4, not at all. A suppressed count is
+reported as the interval the publisher's own rule guarantees, and
+[`docs/not-provided.md`](docs/not-provided.md) says why at length. The short
+version: "assuming every suppressed cell is 2" is a defensible sentence in a
+report, because the assumption travels with the number — it has an author, a
+date and a reason. A column called `completed_cases_estimated`, sitting in a
+warehouse six months later, carries none of that. An estimate that leaves its
+context behind stops being an estimate and becomes a fact.
+
 None of this is a complaint about the data. Where the published figures can be
 checked against each other, they hold: the detail adds up to the published
 totals to within six cases in 4,169,291, and every gap that remains is one

@@ -49,6 +49,14 @@ This is recorded as an open question in the data dictionary, because it holds
 only if the Ministry replaces files inside existing resources rather than
 creating new ones. The evidence so far says it does.
 
+**What it paid for.** On 2026-09-17 the storage layout changed completely:
+files moved from readable names to content addressing, each stored under the
+sha256 of its own bytes, and the manifest became a version history rather than a
+list of current files. Downstream, that cost one line in each file that resolves
+a path — an `ORDER BY last_fetched_at_utc DESC LIMIT 1` — and nothing else. No
+query knew or cared where the bytes were. A rule earns its keep the day
+something underneath it moves.
+
 ## Every claim points at a query
 
 Profiling queries live in `sql/profile/`, numbered in the order they were run.
