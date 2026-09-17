@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/Alva0529/bc-surgical-wait-times/actions/workflows/ci.yml/badge.svg)](https://github.com/Alva0529/bc-surgical-wait-times/actions/workflows/ci.yml)
 
-> **Status: in progress.** Steps 1 and 2 complete, step 3 under way. See Roadmap
+> **Status: in progress.** Steps 1 to 3 complete, step 4 under way. See Roadmap
 > below.
 
 ## What this is
@@ -58,7 +58,7 @@ directly:
 
 A pipeline that treats the published files as complete, and lets defaults fill
 in whatever is missing, assumes exactly what the publisher says it cannot
-guarantee. Below are four ways that goes wrong without an error.
+guarantee. Below are six ways that goes wrong without an error.
 
 ### 1. A year of quarterly data is missing, and the metadata says it isn't
 
