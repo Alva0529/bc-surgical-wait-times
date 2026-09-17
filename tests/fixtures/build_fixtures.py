@@ -42,6 +42,9 @@ INTERIM_ID = "0c430fa8-043c-48d8-8e61-ecdab63b9ef3"
 
 FIXTURE_DIR = Path(__file__).resolve().parent
 
+# Fixed, so that regenerating the fixture does not rewrite the manifest.
+FIXTURE_FETCHED_AT = "2026-09-17T00:00:00+00:00"
+
 ANNUAL_HEADER = [
     "FISCAL_YEAR", "HEALTH_AUTHORITY", "HOSPITAL_NAME", "PROCEDURE_GROUP",
     "WAITING", "COMPLETED", "PERCENTILE_COMP_50TH", "PERCENTILE_COMP_90TH",
@@ -160,21 +163,32 @@ def main():
     # Same shape as the real manifest, and the same resource ids. local_path is
     # relative, because the tests copy this directory to data/raw/ under a
     # temporary working directory and run the silver SQL there.
+    #
+    # The real manifest keeps one record per version ever fetched, and the SQL
+    # takes the most recently fetched one, so these records carry the timestamp
+    # that lookup orders by. A fixed timestamp keeps regeneration from churning
+    # the file.
     manifest = [
         {
             "resource_id": QUARTERLY_ID,
             "resource_name": "Quarterly fixture",
             "local_path": f"data/raw/{quarterly}",
+            "first_fetched_at_utc": FIXTURE_FETCHED_AT,
+            "last_fetched_at_utc": FIXTURE_FETCHED_AT,
         },
         {
             "resource_id": ANNUAL_ID,
             "resource_name": "Annual fixture",
             "local_path": f"data/raw/{annual}",
+            "first_fetched_at_utc": FIXTURE_FETCHED_AT,
+            "last_fetched_at_utc": FIXTURE_FETCHED_AT,
         },
         {
             "resource_id": INTERIM_ID,
             "resource_name": "Interim fixture",
             "local_path": f"data/raw/{interim}",
+            "first_fetched_at_utc": FIXTURE_FETCHED_AT,
+            "last_fetched_at_utc": FIXTURE_FETCHED_AT,
         },
     ]
     (FIXTURE_DIR / "_manifest.json").write_text(json.dumps(manifest, indent=2))

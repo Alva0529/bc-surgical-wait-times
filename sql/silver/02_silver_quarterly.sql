@@ -25,16 +25,23 @@
 INSTALL excel;
 LOAD excel;
 
+-- The manifest holds every version ever fetched, one record each, so a
+-- lookup takes the most recently fetched version of the resource.
+
 SET VARIABLE cumulative_path = (
     SELECT local_path
     FROM read_json('data/raw/_manifest.json')
     WHERE resource_id = 'f294562c-a6fd-4d7f-8f99-c51c91891c67'
+    ORDER BY last_fetched_at_utc DESC
+    LIMIT 1
 );
 
 SET VARIABLE interim_path = (
     SELECT local_path
     FROM read_json('data/raw/_manifest.json')
     WHERE resource_id = '0c430fa8-043c-48d8-8e61-ecdab63b9ef3'
+    ORDER BY last_fetched_at_utc DESC
+    LIMIT 1
 );
 
 

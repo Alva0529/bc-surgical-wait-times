@@ -130,19 +130,32 @@ round.
   ends up with two records pointing at one path. The three current resources
   do not collide, so this is not handled yet.
 
-- **Raw files are overwritten on every run, and old versions are not kept.**
-  Each run writes over the files in `data/raw/` and rewrites the manifest. The
-  Ministry restates this data. Once a file is restated, the version that
-  earlier results were computed from is gone. The sha256 in the manifest (kept
-  in git history) can prove which version was read, but cannot bring that
-  version back.
+### Raw files are archived, not overwritten
 
-  **Why this matters for Step 5:** reconciliation conclusions must be
-  reproducible and traceable to a specific query and a specific file. With
-  overwriting, they are reproducible only until the next restatement. After
-  that, the manifest can show "this is the version I read", but the version
-  itself no longer exists. **Before Step 5, decide whether to archive raw files
-  by sha256 or by fetch time instead of overwriting them.** Not handled yet.
+Each file is stored under the sha256 of its own bytes:
+`data/raw/077444690d6e....xlsx`. The name is the integrity proof, and a version
+is never written over by a later one. Re-fetching an unchanged file writes
+nothing, because identical bytes produce an identical name.
+
+`_manifest.json` holds one record per version ever fetched — resource, checksum,
+source URL, size, first and last fetch time — and is committed, so the version
+history is in git even though the files are not. Downstream SQL takes the most
+recently fetched version of a resource, by `last_fetched_at_utc`.
+
+This was changed on 2026-09-17, before step 5, because the reconciliation's
+conclusions have to stay checkable: the Ministry restates this data, and the
+first restatement would otherwise have destroyed the file every earlier number
+was computed from. The manifest's sha256 could prove which version had been
+read, but not produce it.
+
+**What it costs:** disk. Each version of the quarterly file is 8.7 MB, and
+nothing here deletes old ones. If that ever matters, delete by checksum and
+leave the manifest record in place: the record is the history, the file is only
+a copy.
+
+**Migration note:** manifests written before this change recorded one
+`fetched_at_utc` per resource. `load_manifest()` reads such a record as a
+version seen once, so the date a file was first held survives the change.
 
 ## Reading xlsx files with DuckDB
 

@@ -27,10 +27,15 @@
 INSTALL excel;
 LOAD excel;
 
+-- The manifest holds every version ever fetched, one record each, so a
+-- lookup takes the most recently fetched version of the resource.
+
 SET VARIABLE annual_path = (
     SELECT local_path
     FROM read_json('data/raw/_manifest.json')
     WHERE resource_id = '6cd508eb-7e31-4c86-b070-dc698131fa9a'
+    ORDER BY last_fetched_at_utc DESC
+    LIMIT 1
 );
 
 

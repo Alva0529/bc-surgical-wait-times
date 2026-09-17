@@ -5,11 +5,18 @@ Nothing is cleaned or reshaped here. The only job of this script is to get the
 source files onto disk unchanged, and to write down where each one came from and
 when it was fetched. Everything downstream reads from here, never from the web.
 
+Files are stored under the sha256 of their own bytes, so a version is never
+overwritten by a later one. The Ministry restates this data, and a conclusion
+drawn from a file that no longer exists cannot be checked. The checksum is both
+the filename and the proof that the file is the one a result was computed from.
+
+The manifest is the index: one record per version ever fetched, not one per
+resource. Downstream reads the most recently fetched version of a resource.
+
 Source:  BC Data Catalogue, dataset "bc-surgical-wait-times"
 Owner:   Health Sector Information Analysis and Reporting, BC Ministry of Health
 Licence: Open Government Licence - British Columbia
 """
-import re
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -40,33 +47,28 @@ def list_resources():
     # We only want the data files, not the HTML metadata link.
     return [r for r in resources if r.get("format", "").upper() in {"XLSX", "CSV"}]
 
-def safe_filename(resource):
-    """Derive a local filename for a resource from its published name.
 
-    The download URL is deliberately not used. Its last segment is sometimes
-    not a real filename (one is literally `___`), and it changes whenever a
-    file is reissued. Naming every file from the resource name gives one rule
-    for all of them.
+def fetch(resource):
+    """Download one resource, store it under its checksum, describe the version.
+
+    Returns the record and whether the bytes were new to this machine. Identical
+    bytes produce an identical filename, so a re-run of an unchanged file writes
+    nothing and leaves the earlier copy exactly as it was.
     """
-    slug = re.sub(r"[^A-Za-z0-9]+", "-", resource["name"]).strip("-").lower()
-    extension = "." + resource.get("format", "xlsx").lower()
-    return slug + extension
-
-def download(resource):
-    """Fetch one resource to data/raw and return a provenance record for it."""
     url = resource["url"]
-    target = RAW_DIR / safe_filename(resource)
 
     response = requests.get(url, timeout=300)
     response.raise_for_status()
-    target.write_bytes(response.content)
 
-    # A checksum lets us tell later whether the Ministry restated the file.
-    # The dataset description warns the data is subject to restating, so this
-    # is not a theoretical concern.
     checksum = hashlib.sha256(response.content).hexdigest()
+    extension = "." + resource.get("format", "xlsx").lower()
+    target = RAW_DIR / (checksum + extension)
 
-    return {
+    is_new = not target.exists()
+    if is_new:
+        target.write_bytes(response.content)
+
+    record = {
         "resource_id": resource["id"],
         "resource_name": resource.get("name"),
         "format": resource.get("format"),
@@ -75,22 +77,66 @@ def download(resource):
         "local_path": target.relative_to(RAW_DIR.parents[1]).as_posix(),
         "bytes": len(response.content),
         "sha256": checksum,
-        "fetched_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
+    return record, is_new
+
+
+def load_manifest():
+    """Every version fetched so far, or an empty history on a first run."""
+    if not MANIFEST.exists():
+        return []
+
+    records = json.loads(MANIFEST.read_text())
+    for record in records:
+        # Manifests written before versions were kept recorded a single
+        # fetched_at_utc per resource. Read one as a version seen once, so the
+        # date the file was first held is not lost in the migration.
+        if "first_fetched_at_utc" not in record:
+            fetched = record.pop("fetched_at_utc", None)
+            record["first_fetched_at_utc"] = fetched
+            record["last_fetched_at_utc"] = fetched
+    return records
 
 
 def main():
     RAW_DIR.mkdir(parents=True, exist_ok=True)
 
-    records = []
-    for resource in list_resources():
-        print(f"downloading {resource.get('name')} ...")
-        record = download(resource)
-        print(f"  -> {record['local_path']}  ({record['bytes']:,} bytes)")
-        records.append(record)
+    # A version is a resource and a checksum together. The same file fetched
+    # twice is one version seen twice, not two versions.
+    history = {(r["resource_id"], r["sha256"]): r for r in load_manifest()}
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    new_versions = 0
 
-    MANIFEST.write_text(json.dumps(records, indent=2))
-    print(f"\n{len(records)} file(s) written. Manifest: {MANIFEST}")
+    for resource in list_resources():
+        print(f"fetching {resource.get('name')} ...")
+        record, is_new_file = fetch(resource)
+        key = (record["resource_id"], record["sha256"])
+
+        if key in history:
+            # Same bytes as a version already recorded. Refresh the catalogue
+            # metadata, which can change while the file does not, and keep the
+            # date this version was first seen.
+            known = history[key]
+            known.update(record)
+            known["last_fetched_at_utc"] = now
+            print(f"  unchanged since {known['first_fetched_at_utc']}"
+                  f"  ({record['sha256'][:12]})")
+        else:
+            record["first_fetched_at_utc"] = now
+            record["last_fetched_at_utc"] = now
+            history[key] = record
+            new_versions += 1
+            print(f"  new version  {record['sha256'][:12]}"
+                  f"  ({record['bytes']:,} bytes)"
+                  f"{'' if is_new_file else ', bytes already on disk'}")
+
+    versions = sorted(
+        history.values(),
+        key=lambda r: (r["resource_id"], r["first_fetched_at_utc"]),
+    )
+    MANIFEST.write_text(json.dumps(versions, indent=2))
+
+    print(f"\n{new_versions} new version(s), {len(versions)} in the manifest: {MANIFEST}")
 
 
 if __name__ == "__main__":

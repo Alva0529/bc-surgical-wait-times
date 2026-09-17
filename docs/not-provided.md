@@ -11,6 +11,34 @@ avoid.
 
 ---
 
+## No estimate of what a suppressed value was
+
+**Absent:** any imputed number in place of a withheld one. No proportional
+distribution of the gap between a total and its parts, no midpoint of 1 and 4,
+no model that guesses which facilities the hidden cases belong to.
+
+**Why.** The whole argument of this project is that the published data is sound
+and that the errors come from how it is read. Filling in a hidden value would be
+the largest such error, and this pipeline would be making it: an invented number
+is indistinguishable from a published one the moment it lands in a column, and
+every total built on it inherits a guess without saying so.
+
+What the model gives instead is a bound. A suppressed count is between 1 and 4,
+so a total of suppressed cells is between one and four times their number, and
+the reconciliation reports that interval. An interval is a weaker statement than
+a point estimate, and it is one the data supports.
+
+**If you need a single number:** decide the assumption yourself, outside this
+pipeline, and say what it was. "Assuming every suppressed cell is 2" is a
+defensible sentence in a report. A column called `completed_cases_estimated`, in
+a warehouse, six months later, is not.
+
+In business terms: "how many hip replacements did this hospital do last
+quarter?" has no answer when the count was withheld — but "between 1 and 4" is
+an answer, and it is the true one.
+
+---
+
 ## No `avg_wait_weeks`, and no average of any percentile
 
 **Absent:** any column or view that averages `p50_weeks` or `p90_weeks` across
