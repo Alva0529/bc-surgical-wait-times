@@ -238,6 +238,22 @@ file is worse than no check at all. This was learned the same afternoon, on
 these same two files. And break one thing at a time, so that the assertions can
 be seen not to be covering for each other.
 
+### Every number in a document points at a query
+
+The reconciliation memo quotes about twenty figures. Nineteen were read from a
+query result. One — the count of checks that could not be made — was added up by
+hand from six rows of a diagnostic, and it was the only one that was wrong: 8,841
+where the views say 8,941.
+
+So: a figure that goes into a document is a figure a query returned. If a
+document needs a number no query produces, the fix is another query, not mental
+arithmetic over a result set. Intermediate values worked out by hand do not get
+written down.
+
+The figures in the memo are pinned in `tests/test_memo_figures.py`, one
+assertion per passage, so that a release that moves any of them fails a test
+instead of quietly ageing the document.
+
 ### A rule that cries wolf is not a rule
 
 The gap diagnostic in `sql/silver/02_silver_quarterly.sql` first reported seven
