@@ -169,16 +169,38 @@ An assertion can pass because the rows it looks at are not there at all. Where
 that is possible, assert first that the rows exist — the percentile
 classification test does this, and says so in its failure message.
 
-Breaking the logic is also how a gap in the fixture shows up. The assertion that
-`dim_facility` covers every facility could not fail when the annual file was
-dropped from it, because every facility in the annual fixture also appeared in
-the quarterly one. The fixture now carries a facility that only the annual file
-names, as the real data does.
+### It has already caught one: a false green in this repository
+
+This is not a habit kept on principle. On 2026-09-16 it caught an assertion that
+was broken the moment it was written, and green the whole time.
+
+**The assertion.** `test_dim_facility_covers_every_facility_in_the_facts`, which
+exists to enforce that the facility dimension is the union of all three
+published files. It asserts that every (health authority, facility) pair in
+either fact table has exactly one row in `dim_facility`.
+
+**How it was found.** The mutation was to delete the annual file from the union
+in `sql/gold/02_dim_facility.sql`, and to expect the assertion to fail. It
+passed. Every facility in the annual fixture also appeared in the quarterly
+fixture, so a dimension built from the quarterly files alone still covered
+everything the assertion looked at.
+
+**Why that mattered.** The assertion would have stayed green until a facility
+appeared that only the annual file names — which is the real situation: six
+facilities stopped reporting years ago and are in the historical files only. The
+test guarding the union would have failed to notice the union being dropped,
+and every row belonging to those six would have fallen out of the model in
+silence.
+
+**The fix.** The fixture now carries a facility that only the annual file names,
+matching the shape of the real data. The same mutation then failed the
+assertion, and only that one.
 
 Two practical notes. Commit before breaking anything: `git checkout --` cannot
 restore a file git has never seen, and a mutation left behind in an untracked
-file is worse than no check at all. And break one thing at a time, so that the
-assertions can be seen not to be covering for each other.
+file is worse than no check at all. This was learned the same afternoon, on
+these same two files. And break one thing at a time, so that the assertions can
+be seen not to be covering for each other.
 
 ### A rule that cries wolf is not a rule
 

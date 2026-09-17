@@ -61,6 +61,37 @@ waiting on 31 March 2024" is.
 
 ---
 
+## No reason why a facility has no rows in a period
+
+**Absent:** any column saying whether a facility performed no surgeries in a
+period, or was not reporting at all.
+
+**Why.** Three different situations produce the same thing — no rows — and the
+published files do not tell them apart:
+
+1. The facility had not opened yet. Five of the 65 appear partway through the
+   series, the newest in 2021/22 Q2.
+2. The facility had stopped reporting. Six did, the most recent in 2021/22 Q2
+   and the oldest back in 2009/10 Q3. This is why the interim file names 59
+   facilities where the others name 65: over seventeen years, the roster itself
+   changes.
+3. The facility was reporting and did no surgeries in that group that period.
+
+`dim_facility` settles the first two: `first_quarter_seen` and
+`last_quarter_seen` give the range each facility was reporting in, and the
+`in_*_file` flags say which files name it at all. Inside that range, the third
+case cannot be distinguished from a facility that simply was not reported, and
+nothing here invents the difference.
+
+**If you need to know:** ask the health authority. From the published data, the
+honest statement is "no rows", not "no surgeries".
+
+In business terms: "did this hospital stop doing hip replacements in 2018?" is
+not answerable from an empty cell. "Was this hospital reporting at all in 2018?"
+is — and if it was not, an empty chart for it says nothing about surgery.
+
+---
+
 ## No surrogate keys
 
 **Absent:** integer key columns on the dimensions. A facility is identified by

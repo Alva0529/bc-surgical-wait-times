@@ -413,3 +413,92 @@ def test_the_dimensions_flag_totals_and_the_residual_category(silver):
     assert authorities["All Health Authorities"] is True
     assert all(is_total is False for name, is_total in authorities.items()
                if name != "All Health Authorities")
+
+
+FACT_GRAINS = [
+    ("quarterly", "silver_quarterly", "fact_volume_quarterly",
+     "fact_totals_quarterly", "fact_percentile_quarterly"),
+    ("annual", "silver_annual", "fact_volume_annual",
+     "fact_totals_annual", "fact_percentile_annual"),
+]
+
+
+@pytest.mark.parametrize("grain,silver_table,volume,totals,percentile", FACT_GRAINS)
+def test_the_volume_view_holds_no_total_rows(
+    silver, grain, silver_table, volume, totals, percentile
+):
+    """Guards the one property that makes summing the volume view safe.
+
+    The publisher's totals are rows in the same file as the detail, so a view
+    holding both turns SELECT sum(completed_cases) into double counting with no
+    error. A failure means the filter in sql/gold/ stopped excluding them.
+    """
+    totals_in_volume = silver.sql(f"""
+        SELECT count(*) FROM {volume}
+        WHERE health_authority = 'All Health Authorities'
+           OR hospital_name    = 'All Facilities'
+           OR procedure_group  = 'All Procedures'
+    """).fetchone()[0]
+
+    assert totals_in_volume == 0, (
+        f"{volume} holds {totals_in_volume} of the publisher's total rows"
+    )
+
+
+@pytest.mark.parametrize("grain,silver_table,volume,totals,percentile", FACT_GRAINS)
+def test_volume_and_totals_together_account_for_every_row(
+    silver, grain, silver_table, volume, totals, percentile
+):
+    """Guards against rows falling between the two views.
+
+    Splitting the facts by level only works if the split is exhaustive: every
+    silver row belongs to exactly one of the two. A failure means the filters
+    have drifted apart and some rows are in neither, which no query would
+    notice, or in both, which double counts.
+    """
+    silver_rows, volume_rows, totals_rows = silver.sql(f"""
+        SELECT (SELECT count(*) FROM {silver_table}),
+               (SELECT count(*) FROM {volume}),
+               (SELECT count(*) FROM {totals})
+    """).fetchone()
+
+    assert volume_rows + totals_rows == silver_rows, (
+        f"{volume} ({volume_rows}) and {totals} ({totals_rows}) do not add up to "
+        f"{silver_table} ({silver_rows})"
+    )
+
+
+@pytest.mark.parametrize("grain,silver_table,volume,totals,percentile", FACT_GRAINS)
+def test_the_percentile_view_carries_nothing_summable(
+    silver, grain, silver_table, volume, totals, percentile
+):
+    """Guards the view whose measures must never be aggregated.
+
+    A percentile cannot be summed or averaged at any level, so the protection is
+    that the view holds no count to sum in the first place. A failure means a
+    count value was added to it, and the next dashboard will total it beside the
+    wait times.
+    """
+    columns = [row[0] for row in silver.sql(f"DESCRIBE {percentile}").fetchall()]
+
+    summable = [c for c in columns
+                if c in ("completed_cases", "cases_waiting_at_period_end")
+                or c.endswith(("_min", "_max"))]
+    assert summable == [], f"{percentile} carries summable columns: {summable}"
+
+
+@pytest.mark.parametrize("grain,silver_table,volume,totals,percentile", FACT_GRAINS)
+def test_the_volume_view_carries_no_percentiles(
+    silver, grain, silver_table, volume, totals, percentile
+):
+    """Guards the other half of the split: no wait times beside the counts.
+
+    The volume view is the one place a sum is encouraged, so it must hold
+    nothing that a sum would ruin. A failure means the percentiles were merged
+    back in, and averaging them alongside a SUM of cases would look entirely
+    normal.
+    """
+    columns = [row[0] for row in silver.sql(f"DESCRIBE {volume}").fetchall()]
+
+    wait_times = [c for c in columns if c.startswith(("p50", "p90"))]
+    assert wait_times == [], f"{volume} carries percentile columns: {wait_times}"
