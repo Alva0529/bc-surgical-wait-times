@@ -232,6 +232,27 @@ check what the mutation did before drawing a conclusion from a green run —
 a row count either side is enough. Removing the filter outright failed two
 assertions, which is what the check was after.
 
+It happened twice more while checking the memo's assertions, in two different
+ways, and both are worth knowing about:
+
+- **A `sed` that matches nothing changes nothing, and says so to no one.** The
+  pattern ended `0))` where the file said `0), 2)`. The suite stayed green and
+  for a moment that looked like a weak assertion. Read the file back, or have
+  the edit assert that it matched, which is what the later ones do.
+- **A mutation can change the data and still not reach the assertion.**
+  Loosening the vintage view from four quarters to three added 3,458 rows, and
+  the curve did not move: those rows agree between the two files, so the
+  assertion never saw them. That is not a weak test. It needed a mutation aimed
+  at the comparison itself — bounds replaced by equality — which failed it
+  immediately.
+
+Verifying the second one turned up something about the data: where a
+facility-procedure has rows in only three quarters, the annual figure equals
+those three quarters exactly. The missing quarter is a real zero, not an
+omission. That does not settle the ambiguity in docs/not-provided.md, but it is
+evidence about it, and it was found by checking a test rather than by asking the
+question.
+
 Three practical notes. Commit before breaking anything: `git checkout --` cannot
 restore a file git has never seen, and a mutation left behind in an untracked
 file is worse than no check at all. This was learned the same afternoon, on
