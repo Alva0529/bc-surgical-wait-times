@@ -94,15 +94,19 @@ and the `_seen` columns — they are machinery.
 
 ## Where the measures live
 
-**All of them in one table, called `Measures`.** Create it with Home → Enter
+**All of them in one table, called `_Measures`.** Create it with Home → Enter
 Data, a single column named `placeholder`, no rows, then hide that column. The
 table exists only to hold measures.
+
+Not `Measures`: that is a reserved name in Power BI and the rename is refused.
+The leading underscore also sorts the table to the top of the field list, which
+is where it belongs.
 
 Two reasons, and the first is practical rather than tidy. Every column of every
 fact table is hidden above, and Power BI drops a table from the field list when
 it has no visible column and no measure. Put the measures in the fact tables and
 the tables reappear, each holding a mixture of hidden machinery and the things
-people are meant to use. Put them in `Measures` and the field list reads as what
+people are meant to use. Put them in `_Measures` and the field list reads as what
 it is: dimension attributes to slice by, and measures to show.
 
 Second, a measure's home table suggests where its number comes from, and here
