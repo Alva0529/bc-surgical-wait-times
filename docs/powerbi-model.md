@@ -92,6 +92,47 @@ Keep visible in the dimensions: `fiscal_year`, `quarter`, `period_label`,
 `procedure_group`, `is_residual`, and the `in_*_file` flags. Hide `facility_key`
 and the `_seen` columns — they are machinery.
 
+## Where the measures live
+
+**All of them in one table, called `Measures`.** Create it with Home → Enter
+Data, a single column named `placeholder`, no rows, then hide that column. The
+table exists only to hold measures.
+
+Two reasons, and the first is practical rather than tidy. Every column of every
+fact table is hidden above, and Power BI drops a table from the field list when
+it has no visible column and no measure. Put the measures in the fact tables and
+the tables reappear, each holding a mixture of hidden machinery and the things
+people are meant to use. Put them in `Measures` and the field list reads as what
+it is: dimension attributes to slice by, and measures to show.
+
+Second, a measure's home table suggests where its number comes from, and here
+that suggestion would be wrong as often as right. `Shortfall vs published`
+reads two fact tables. `Cases waiting (period end)` reads a fact table and a
+dimension. Filing them under one of their inputs would state something untrue
+about the other.
+
+Set a display folder on each, so the list stays readable as it grows:
+
+| Measure | Display folder | Format |
+|---|---|---|
+| `Completed cases` | Volume | Whole number, thousands separator |
+| `Completed (lower bound)` | Volume\Bounds | Whole number |
+| `Completed (upper bound)` | Volume\Bounds | Whole number |
+| `Completed (range)` | Volume\Bounds | Text |
+| `Withheld cells` | Volume\Suppression | Whole number |
+| `Withheld share` | Volume\Suppression | Percentage, 1 decimal |
+| `Cases waiting (period end)` | Waiting | Whole number, thousands separator |
+| `P50 weeks (published)` | Wait times | Decimal, 1 place |
+| `P90 weeks (published)` | Wait times | Decimal, 1 place |
+| `Wait time note` | Wait times | Text |
+| `Published total` | Reconciliation | Whole number, thousands separator |
+| `Shortfall vs published` | Reconciliation | Whole number, thousands separator |
+| `Checks made` | Reconciliation | Whole number, thousands separator |
+| `Checks outside bounds` | Reconciliation | Whole number |
+
+The DAX below references its source tables by name, so each definition works
+wherever it is pasted; the home table only decides where it appears.
+
 ## Measures
 
 ### Volume
