@@ -138,6 +138,7 @@ SELECT
     published.health_authority,
     published.hospital_name,
     published.procedure_group,
+    published.health_authority || ' | ' || published.hospital_name AS facility_key,
     published.measure,
 
     published.parent_state,

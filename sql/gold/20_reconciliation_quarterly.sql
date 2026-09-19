@@ -41,6 +41,11 @@
 -- would be meaningless, and that is not what it is for — every use filters to an
 -- edge and a period first. The fact views stay split precisely so that summing
 -- them is safe; this one is a report, and its rows are findings, not facts.
+--
+-- facility_key and period_label are the natural keys written as one column
+-- each, the same as in the fact views: Power BI relates tables on one column
+-- and both dimensions are identified by two. Nothing is numbered; see
+-- docs/conventions.md.
 
 CREATE OR REPLACE VIEW reconciliation_quarterly AS
 
@@ -168,6 +173,8 @@ SELECT
     published.health_authority,
     published.hospital_name,
     published.procedure_group,
+    published.health_authority || ' | ' || published.hospital_name AS facility_key,
+    published.fiscal_year || ' ' || published.quarter              AS period_label,
     published.measure,
 
     published.parent_state,

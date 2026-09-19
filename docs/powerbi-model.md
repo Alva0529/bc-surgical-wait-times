@@ -48,10 +48,21 @@ explains that at the top of `sql/gold/02_dim_facility.sql`.
 | `fact_volume_quarterly` | `health_authority` | `dim_health_authority` | `health_authority` | many-to-one |
 | `fact_percentile_quarterly` | same four | | | many-to-one |
 | `fact_totals_quarterly` | same four | | | many-to-one |
+| `reconciliation_quarterly` | same four | | | many-to-one |
 
-`reconciliation_quarterly` and `about` stay unrelated. The reconciliation is a
-report of its own, filtered by its `edge` column, and relating it to the
-dimensions would invite someone to slice it by facility and add the rows up.
+`about` stays unrelated: one row, read by a footer card.
+
+**`reconciliation_quarterly` is related, with a condition.** Slicing the checks
+by quarter, authority or procedure group is exactly how the staircase is read,
+so the relationships earn their place. But its rows are three overlapping
+decompositions of the same data — a province check, the authority checks beneath
+it and the facility checks beneath those — so **every visual built on it filters
+`edge` first**. Summed across edges it counts the same surgeries three times.
+
+That is the one table in the model where the guard is a discipline rather than a
+structure, and it is the reason the column is called `edge` and sits first in
+the view. The fact tables are split by level precisely so that they need no such
+discipline.
 
 **Set `dim_quarter[period_label]` to sort by `ends_on`.** Without it the axis
 sorts as text, which happens to be right today and will stop being right the

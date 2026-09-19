@@ -62,6 +62,7 @@ SELECT
     annual.health_authority,
     annual.hospital_name,
     annual.procedure_group,
+    annual.health_authority || ' | ' || annual.hospital_name AS facility_key,
 
     annual.is_all_health_authorities,
     annual.is_all_facilities,
