@@ -202,14 +202,19 @@ such thing.
 ```dax
 P50 weeks (published) =
 VAR RowsInContext = COUNTROWS(fact_percentile_quarterly)
-VAR Value = SELECTEDVALUE(fact_percentile_quarterly[p50_weeks])
-RETURN IF(RowsInContext = 1, Value, BLANK())
+VAR PublishedValue = SELECTEDVALUE(fact_percentile_quarterly[p50_weeks])
+RETURN IF(RowsInContext = 1, PublishedValue, BLANK())
 
 P90 weeks (published) =
 VAR RowsInContext = COUNTROWS(fact_percentile_quarterly)
-VAR Value = SELECTEDVALUE(fact_percentile_quarterly[p90_weeks])
-RETURN IF(RowsInContext = 1, Value, BLANK())
+VAR PublishedValue = SELECTEDVALUE(fact_percentile_quarterly[p90_weeks])
+RETURN IF(RowsInContext = 1, PublishedValue, BLANK())
 ```
+
+The variable is not called `Value`: DAX rejects that name, with a syntax error
+that names the variable rather than the reason. Other names that read naturally
+here — `Result`, `Amount` — are safer, but check any new one against the error
+rather than assuming.
 
 **This is the enforcement that only exists here.** The publisher calculates a
 percentile at every level it publishes, because a percentile cannot be rebuilt
