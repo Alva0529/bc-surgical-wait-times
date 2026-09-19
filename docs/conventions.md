@@ -57,6 +57,24 @@ a path — an `ORDER BY last_fetched_at_utc DESC LIMIT 1` — and nothing else. 
 query knew or cared where the bytes were. A rule earns its keep the day
 something underneath it moves.
 
+## A single-column key is not a surrogate key
+
+`dim_facility` and the quarterly fact views carry `facility_key`, the health
+authority and the facility name joined by a pipe, and the fact views carry
+`period_label` the same way. Power BI relates tables on one column, and both of
+those dimensions are identified by two.
+
+**Why this does not break the no-surrogate-keys decision.** Nothing is
+numbered and nothing is allocated. The value is a function of the natural key,
+so rebuilding the warehouse from scratch produces the same key for the same
+facility, and a key stored elsewhere still points at the same row afterwards.
+That stability is the whole reason surrogate keys were declined:
+`docs/not-provided.md` sets out the trade.
+
+A separator that could appear inside a value would reintroduce the ambiguity, so
+it was checked: no health authority or facility name in any of the three files
+contains a pipe.
+
 ## Every claim points at a query
 
 Profiling queries live in `sql/profile/`, numbered in the order they were run.

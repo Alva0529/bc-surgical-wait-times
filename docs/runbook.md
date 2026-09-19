@@ -68,10 +68,31 @@ Gold is views. Materialise one only when all three of these are true:
    definition it was built from. Materialising copies a definition into data,
    and a copy goes stale without saying so.
 
-Exporting gold for Power BI is not this. That is a snapshot for a tool, not a
-performance decision, and it carries its own rule: it must be reproducible and
-must record the manifest sha256 of the files it came from, so a number on a
-dashboard can be traced to a specific version of the published data.
+## Exporting gold for Power BI
+
+Not a materialisation in the sense above. It is a snapshot for a tool, and it
+has its own rules.
+
+```bash
+python src/run_sql.py sql/export/01_export_for_power_bi.sql data/warehouse.duckdb
+```
+
+Nine Parquet files into `data/export/`, about 3.6 MB, not committed, plus
+`_export_manifest.json` recording row counts and the sha256 of every published
+file behind them. The report page carries the same provenance in a footer card,
+because a screenshot outlives the machine that made it.
+
+**Parquet, never CSV.** CSV writes NULL and the empty string identically.
+Exporting through CSV would erase, in the last step, the distinction the whole
+pipeline exists to preserve: a blank cell has three meanings, and a value is
+NULL when and only when nothing was published. Parquet keeps types and nulls
+exactly, and is a tenth of the size.
+
+`COPY` is SQL, so the export needs no pandas.
+
+`docs/powerbi-model.md` holds the rest: relationships, which columns are hidden,
+which are set to "don't summarize", and every measure with its reasoning. That
+document is the reviewable half of a tool that is otherwise a GUI.
 
 ## Tests
 
@@ -105,7 +126,16 @@ python src/run_sql.py sql/gold/03_dim_health_authority.sql data/warehouse.duckdb
 python src/run_sql.py sql/gold/04_dim_procedure_group.sql data/warehouse.duckdb
 python src/run_sql.py sql/gold/10_fact_quarterly.sql data/warehouse.duckdb
 python src/run_sql.py sql/gold/11_fact_annual.sql data/warehouse.duckdb
+python src/run_sql.py sql/gold/20_reconciliation_quarterly.sql data/warehouse.duckdb
+python src/run_sql.py sql/gold/21_reconciliation_annual.sql data/warehouse.duckdb
+python src/run_sql.py sql/gold/22_vintage.sql data/warehouse.duckdb
 python -m pytest -m realdata
+```
+
+Then, if the Power BI report needs refreshing:
+
+```bash
+python src/run_sql.py sql/export/01_export_for_power_bi.sql data/warehouse.duckdb
 ```
 
 This list is also held in `tests/conftest.py` as `BUILD_SQL`, and pytest prints
@@ -120,15 +150,15 @@ round.
 
 ## Ingest (`src/ingest.py`)
 
-### Known risks
+### A risk that content addressing removed
 
-- **Filename collisions overwrite silently.** Local filenames are derived from
-  the resource name (lowercased, every run of non-alphanumeric characters
-  replaced by `-`). Two resources whose names differ only in punctuation or
-  case, e.g. `2009_2026 Annual` and `2009-2026 annual`, map to the same file.
-  The second download overwrites the first without an error, and the manifest
-  ends up with two records pointing at one path. The three current resources
-  do not collide, so this is not handled yet.
+Until 2026-09-17 filenames came from the resource name, and two resources whose
+names differed only in punctuation would have written over each other in
+silence. Content addressing ended that: a filename is now the sha256 of the
+bytes, so two files collide only when they are the same file, and the manifest
+keys a version by resource and checksum together. Two resources publishing
+identical bytes share one stored copy and keep their own records, which is
+correct rather than a collision.
 
 ### Raw files are archived, not overwritten
 

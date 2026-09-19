@@ -24,6 +24,14 @@
 -- is the second, and the columns ending in _seen say when the facility was
 -- reporting at all, which is what tells a closed hospital from a quiet one.
 --
+--
+-- facility_key is the natural key written as one column: health authority, a
+-- pipe, and facility name. Power BI relates tables on a single column only, and
+-- a facility is identified by two. It is not a surrogate key: nothing is
+-- numbered, nothing is allocated, and rebuilding the warehouse produces the
+-- same value for the same facility. docs/conventions.md says why that
+-- distinction matters.
+--
 -- What they still cannot settle: a facility that is in a file, within its range,
 -- and has no rows for one period. The published data does not distinguish "no
 -- surgeries" from "not reported" there, and nothing here invents the
@@ -52,6 +60,7 @@ WITH sightings AS (
 SELECT
     health_authority,
     hospital_name,
+    health_authority || ' | ' || hospital_name AS facility_key,
     hospital_name = 'All Facilities' AS is_total,
 
     bool_or(source = 'quarterly') AS in_quarterly_file,

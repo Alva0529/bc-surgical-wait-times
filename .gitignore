@@ -1,8 +1,10 @@
 # Local data — never commit source files or working copies
 data/raw/*
 data/processed/*
+data/export/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+!data/export/.gitkeep
 !data/raw/_manifest.json
 
 # The warehouse is rebuilt from the raw files, never committed

@@ -16,6 +16,11 @@
 -- cases_waiting_at_period_end means March 31 here and the quarter end there,
 -- which is the publisher's definition and the reason it is never summed across
 -- periods. docs/not-provided.md says what to do instead.
+--
+-- Two single-column keys for the report layer: facility_key and period_label.
+-- Power BI relates tables on one column, and both of those dimensions are
+-- identified by two. Both are deterministic joins of the natural key, not
+-- surrogate keys — see sql/gold/02_dim_facility.sql.
 
 
 CREATE OR REPLACE VIEW fact_volume_annual AS
@@ -25,6 +30,7 @@ SELECT
     health_authority,
     hospital_name,
     procedure_group,
+    health_authority || ' | ' || hospital_name AS facility_key,
 
     completed        AS completed_cases,
     completed_state,
@@ -50,6 +56,7 @@ SELECT
     health_authority,
     hospital_name,
     procedure_group,
+    health_authority || ' | ' || hospital_name AS facility_key,
 
     is_all_health_authorities,
     is_all_facilities,
@@ -84,6 +91,7 @@ SELECT
     health_authority,
     hospital_name,
     procedure_group,
+    health_authority || ' | ' || hospital_name AS facility_key,
 
     is_all_health_authorities,
     is_all_facilities,
